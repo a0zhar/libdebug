@@ -19,6 +19,7 @@ namespace libdebug {
         //    uint8_t original;
         // };
         public static uint MAX_BREAKPOINTS = 10;
+
         public static uint MAX_WATCHPOINTS = 4;
         private const uint BROADCAST_MAGIC = 0xFFFFAAAA;
         private const int BROADCAST_PORT = 1010;
@@ -71,7 +72,8 @@ namespace libdebug {
             try {
                 enp = new IPEndPoint(IPAddress.Parse(ip), PS4DBG_PORT);
                 sock = new Socket(enp.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
-            } catch (FormatException ex) {
+            }
+            catch (FormatException ex) {
                 throw new FormatException(
                     "Unable to initialize PS4DBG Class!!!\n" +
                     $"Exception: {ex.Message}"
@@ -272,44 +274,58 @@ namespace libdebug {
         }
 
         /// <summary>
-        /// Connects to PlayStation 4
+        /// Function attempts to establish a connection to the PS4 if not already connected
         /// </summary>
+        /// <returns>True if successfully connected or if already connected, otherwise false</returns>
         public bool Connect() {
-            if (!IsConnected) {
+            if (IsConnected) return true;
+
+            // Attempt to connect to the PS4 System, and in case of an exception occuring
+            // handle it, and return false
+            try {
+                // Configure socket settings
                 sock.NoDelay = true;
                 sock.ReceiveBufferSize = NET_MAX_LENGTH;
                 sock.SendBufferSize = NET_MAX_LENGTH;
-                sock.NoDelay = true;
+                sock.ReceiveTimeout = 10000; // 1000*10
 
-                sock.ReceiveTimeout = 1000 * 10;
-
-                try {
-                    sock.Connect(enp);
-                    IsConnected = true;
-                    Console.WriteLine("Connected!");
-                }
-                catch (Exception ex) {
-                    Console.WriteLine(ex.ToString());
-                    return false;
-                }
+                // Connect to the PS4
+                sock.Connect(enp);
+                IsConnected = true;
+                Console.WriteLine("Successfully connected to the PS4!");
             }
+            catch (Exception ex) {
+                Console.WriteLine($"Failed to connect to PS4: {ex.Message}");
+                return false;
+            }
+
             return IsConnected;
         }
 
         /// <summary>
-        /// Disconnects from PlayStation 4
+        /// Function closes the connection to the PS4 if a connection is currently open
         /// </summary>
+        /// <returns>True if disconnected successfully or if not connected, otherwise false</returns>
         public bool Disconnect() {
-            SendCMDPacket(CMDS.CMD_CONSOLE_END, 0);
+            if (!IsConnected) return true;
+
+            // Attempt to disconnect from the PS4, and in case of an exception occuring
+            // we handle it, and return false
             try {
+                // Send the command packet responsible for closing the connection to the PS4
+                SendCMDPacket(CMDS.CMD_CONSOLE_END, 0);
+
+                // Close the socket
                 sock.Shutdown(SocketShutdown.Both);
                 sock.Close();
+                IsConnected = false;
+                Console.WriteLine("Successfully disconnected from the PS4!");
             }
             catch (Exception ex) {
-                Console.WriteLine(ex.ToString());
+                Console.WriteLine($"Failed to disconnect from PS4: {ex.Message}");
                 return false;
             }
-            IsConnected = false;
+
             return true;
         }
 
