@@ -12,19 +12,18 @@ namespace libdebug {
 
     public partial class PS4DBG {
 
-        // from debug.h
-        //struct debug_breakpoint {
+        // Taken from: ps4debug->debug.h
+        // struct debug_breakpoint {
         //    uint32_t valid;
         //    uint64_t address;
         //    uint8_t original;
-        //};
+        // };
         public static uint MAX_BREAKPOINTS = 10;
-
         public static uint MAX_WATCHPOINTS = 4;
         private const uint BROADCAST_MAGIC = 0xFFFFAAAA;
         private const int BROADCAST_PORT = 1010;
 
-        // from protocol.h
+        // Taken from: ps4debug-> protocol.h
         // each packet starts with the magic
         // each C# base type can translate into a packet field
         // some packets, such as write take an additional data whose length will be specified in the cmd packet data field structure specific to that cmd type
@@ -66,16 +65,18 @@ namespace libdebug {
         /// </summary>
         /// <param name="ip">PlayStation 4 ip address</param>
         public PS4DBG(string ip) {
-            IPAddress addr = null;
+            // Try to initialize the <enp> global endpoint variable and
+            // the <sock> global socket variable, and in case of an
+            // exception occuring throw it
             try {
-                addr = IPAddress.Parse(ip);
+                enp = new IPEndPoint(IPAddress.Parse(ip), PS4DBG_PORT);
+                sock = new Socket(enp.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
+            } catch (FormatException ex) {
+                throw new FormatException(
+                    "Unable to initialize PS4DBG Class!!!\n" +
+                    $"Exception: {ex.Message}"
+                 );
             }
-            catch (FormatException ex) {
-                throw ex;
-            }
-
-            enp = new IPEndPoint(addr, PS4DBG_PORT);
-            sock = new Socket(enp.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
         }
 
         public enum CMD_STATUS : uint {
@@ -160,20 +161,20 @@ namespace libdebug {
             DBREG_DR7_LEN_8 = 0x02, // 8 byte length
         };
 
-        public int ExtFWVersion { 
-            get; private set; 
+        public int ExtFWVersion {
+            get; private set;
         } = 0;
 
-        public bool IsConnected { 
-            get; private set; 
+        public bool IsConnected {
+            get; private set;
         } = false;
 
-        public bool IsDebugging { 
-            get; private set; 
+        public bool IsDebugging {
+            get; private set;
         } = false;
 
-        public string Version { 
-            get; private set; 
+        public string Version {
+            get; private set;
         } = "";
 
         // General helper functions, make code cleaner
@@ -444,6 +445,7 @@ namespace libdebug {
             // Send the packet data if present?
             if (data != null) SendData(data, length);
         }
+
         private void SendData(byte[] data, int length) {
             int left = length;
             int offset = 0;
