@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Runtime.InteropServices;
@@ -146,24 +148,33 @@ namespace libdebug {
         };
 
         public enum WATCHPT_BREAKTYPE : uint {
-            DBREG_DR7_EXEC = 0x00,	/* break on execute       */
-            DBREG_DR7_WRONLY = 0x01,	/* break on write         */
-            DBREG_DR7_RDWR = 0x03,	/* break on read or write */
+            DBREG_DR7_EXEC = 0x00,   // break on execute
+            DBREG_DR7_WRONLY = 0x01, // break on write
+            DBREG_DR7_RDWR = 0x03,   // break on read or write
         };
 
         public enum WATCHPT_LENGTH : uint {
-            DBREG_DR7_LEN_1 = 0x00,	/* 1 byte length */
-            DBREG_DR7_LEN_2 = 0x01,
-            DBREG_DR7_LEN_4 = 0x03,
-            DBREG_DR7_LEN_8 = 0x02,
+            DBREG_DR7_LEN_1 = 0x00, // 1 byte length
+            DBREG_DR7_LEN_2 = 0x01, // 2 byte length
+            DBREG_DR7_LEN_4 = 0x03, // 4 byte length
+            DBREG_DR7_LEN_8 = 0x02, // 8 byte length
         };
 
-        public int ExtFWVersion { get; private set; } = 0;
-        public bool IsConnected { get; private set; } = false;
+        public int ExtFWVersion { 
+            get; private set; 
+        } = 0;
 
-        public bool IsDebugging { get; private set; } = false;
+        public bool IsConnected { 
+            get; private set; 
+        } = false;
 
-        public string Version { get; private set; } = "";
+        public bool IsDebugging { 
+            get; private set; 
+        } = false;
+
+        public string Version { 
+            get; private set; 
+        } = "";
 
         // General helper functions, make code cleaner
         public static string ConvertASCII(byte[] data, int offset) {
@@ -327,9 +338,7 @@ namespace libdebug {
         /// <summary>
         /// Get current ps4debug version from library
         /// </summary>
-        public string GetLibraryDebugVersion() {
-            return LIBRARY_VERSION;
-        }
+        public string GetLibraryDebugVersion() => LIBRARY_VERSION;
 
         // General networking functions
         private static IPAddress GetBroadcastAddress(IPAddress address, IPAddress subnetMask) {
@@ -346,20 +355,20 @@ namespace libdebug {
 
         private void CheckConnected() {
             if (!IsConnected) {
-                throw new Exception("libdbg: not connected");
+                throw new Exception("libdebug: not connected");
             }
         }
 
         private void CheckDebugging() {
             if (!IsDebugging) {
-                throw new Exception("libdbg: not debugging");
+                throw new Exception("libdebug: not debugging");
             }
         }
 
         private void CheckStatus(string str = "") {
             CMD_STATUS status = ReceiveStatus();
             if (status != CMD_STATUS.CMD_SUCCESS) {
-                throw new Exception("libdbg status " + ((uint)status).ToString("X") + " " + str);
+                throw new Exception($"libdebug status: {(uint)status:X} {str}");
             }
         }
 
@@ -435,7 +444,6 @@ namespace libdebug {
             // Send the packet data if present?
             if (data != null) SendData(data, length);
         }
-
         private void SendData(byte[] data, int length) {
             int left = length;
             int offset = 0;
