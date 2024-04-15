@@ -240,31 +240,53 @@ namespace libdebug {
             return "";
         }
 
+        /// <summary>
+        /// Function to convert an object to a byte array, the parameter [obj] is the object to convert
+        /// </summary>
+        /// <returns> A byte array representation of the object </returns>
         public static byte[] GetBytesFromObject(object obj) {
+            // Calculate the size of the object in bytes
             int size = Marshal.SizeOf(obj);
 
+            // Allocate memory to hold the byte representation of the object
             byte[] bytes = new byte[size];
+
+            // Allocate unmanaged memory to hold the object
             IntPtr ptr = Marshal.AllocHGlobal(size);
 
+            // Convert the object to a pointer and copy its bytes to the allocated memory
             Marshal.StructureToPtr(obj, ptr, false);
             Marshal.Copy(ptr, bytes, 0, size);
 
+            // Free the allocated unmanaged memory
             Marshal.FreeHGlobal(ptr);
 
             return bytes;
         }
 
+        /// <summary>
+        /// Function to convert a byte array to an object of the specified type
+        /// </summary>
+        /// <param name="buffer">The byte array to convert</param>
+        /// <param name="type">The type of the object to create</param>
+        /// <returns>An object created from the byte array</returns>
         public static object GetObjectFromBytes(byte[] buffer, Type type) {
+            // Calculate the size of the object in bytes based on the type
             int size = Marshal.SizeOf(type);
 
+            // Allocate unmanaged memory to hold the byte array
             IntPtr ptr = Marshal.AllocHGlobal(size);
 
+            // Copy the byte array to the allocated unmanaged memory
             Marshal.Copy(buffer, 0, ptr, size);
-            object r = Marshal.PtrToStructure(ptr, type);
 
+            // Convert the unmanaged memory back to an object of the specified type
+            object obj = Marshal.PtrToStructure(ptr, type);
+
+            // Free the allocated unmanaged memory
             Marshal.FreeHGlobal(ptr);
 
-            return r;
+            return obj;
         }
 
         public static byte[] SubArray(byte[] data, int offset, int length) {
