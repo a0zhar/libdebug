@@ -182,7 +182,7 @@ namespace libdebug {
             // Create a new IPEndPoint for the server
             IPEndPoint server = new IPEndPoint(IPAddress.Any, 0);
 
-            // Create a new UdpClient inside a using block to ensure it's properly disposed
+            // Create a new UdpClient
             UdpClient uc = new UdpClient();
             uc.EnableBroadcast = true;           // Enable broadcast for the UdpClient
             uc.Client.ReceiveTimeout = timeout;  // Set the receive timeout for the UdpClient
@@ -206,8 +206,12 @@ namespace libdebug {
 
                     // Receive the response from the PlayStation 4, then check if the received
                     // magic value matches the expected broadcast magic
-                    if (BitConverter.ToUInt32(uc.Receive(ref server), 0) == BROADCAST_MAGIC)
-                        return server.Address.ToString(); // Return the IP address if matched
+                    if (BitConverter.ToUInt32(uc.Receive(ref server), 0) == BROADCAST_MAGIC) {
+                        uc.Dispose(); // Cleanup
+
+                        // Return the IP address if matched
+                        return server.Address.ToString();
+                    }
                 }
                 // Handle any exceptions and continue
                 catch (Exception ex) {
@@ -215,6 +219,8 @@ namespace libdebug {
                     Console.WriteLine($"Exception {ex.Message}, Source {ex.Source}");
                 }
             }
+            // Cleanup
+            uc.Dispose();
 
             // Return an empty string if the PlayStation IP is not found
             return "";
