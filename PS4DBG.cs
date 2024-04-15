@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
@@ -45,9 +46,10 @@ namespace libdebug {
         // some global values
         private const string LIBRARY_VERSION = "1.3";
 
-        private const int NET_MAX_LENGTH = 0x20000;
+        private const int NET_MAX_LENGTH = 131072;
         private const int PS4DBG_DEBUG_PORT = 755;
         private const int PS4DBG_PORT = 744;
+
         private Thread debugThread = null;
         private IPEndPoint enp = null;
         private Socket sock = null;
@@ -57,6 +59,11 @@ namespace libdebug {
         /// </summary>
         /// <param name="addr">PlayStation 4 address</param>
         public PS4DBG(IPAddress addr) {
+            if (enp != null && sock != null) {
+                DebugPrint("Both endpoint and socket variables have been initialized");
+                return;
+            }
+
             enp = new IPEndPoint(addr, PS4DBG_PORT);
             sock = new Socket(enp.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
         }
@@ -66,14 +73,18 @@ namespace libdebug {
         /// </summary>
         /// <param name="ip">PlayStation 4 ip address</param>
         public PS4DBG(string ip) {
+            if (enp != null && sock != null) {
+                DebugPrint("Both endpoint and socket variables have been initialized");
+                return;
+            }
+
             // Try to initialize the <enp> global endpoint variable and
             // the <sock> global socket variable, and in case of an
             // exception occuring throw it
             try {
                 enp = new IPEndPoint(IPAddress.Parse(ip), PS4DBG_PORT);
                 sock = new Socket(enp.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
-            }
-            catch (FormatException ex) {
+            } catch (FormatException ex) {
                 throw new FormatException(
                     "Unable to initialize PS4DBG Class!!!\n" +
                     $"Exception: {ex.Message}"
@@ -90,11 +101,10 @@ namespace libdebug {
             CMD_INVALID_INDEX = 0xF0000005
         };
 
-        // 128kb
+        // 128 KB
         public enum CMDS : uint {
             CMD_VERSION = 0xBD000001,
             CMD_EXT_FW_VERSION = 0xBD000500,
-
             CMD_PROC_LIST = 0xBDAA0001,
             CMD_PROC_READ = 0xBDAA0002,
             CMD_PROC_WRITE = 0xBDAA0003,
@@ -107,7 +117,6 @@ namespace libdebug {
             CMD_PROC_INFO = 0xBDAA000A,
             CMD_PROC_ALLOC = 0xBDAA000B,
             CMD_PROC_FREE = 0xBDAA000C,
-
             CMD_DEBUG_ATTACH = 0xBDBB0001,
             CMD_DEBUG_DETACH = 0xBDBB0002,
             CMD_DEBUG_BREAKPT = 0xBDBB0003,
@@ -125,11 +134,9 @@ namespace libdebug {
             CMD_DEBUG_THRINFO = 0xBDBB0011,
             CMD_DEBUG_SINGLESTEP = 0xBDBB0012,
             CMD_DEBUG_EXT_STOPGO = 0xBDBB0500,
-
             CMD_KERN_BASE = 0xBDCC0001,
             CMD_KERN_READ = 0xBDCC0002,
             CMD_KERN_WRITE = 0xBDCC0003,
-
             CMD_CONSOLE_REBOOT = 0xBDDD0001,
             CMD_CONSOLE_END = 0xBDDD0002,
             CMD_CONSOLE_PRINT = 0xBDDD0003,
@@ -164,27 +171,33 @@ namespace libdebug {
         };
 
         public int ExtFWVersion {
-            get; private set;
+            get;
+            private set;
         } = 0;
 
         public bool IsConnected {
-            get; private set;
+            get;
+            private set;
         } = false;
 
         public bool IsDebugging {
-            get; private set;
+            get;
+            private set;
         } = false;
 
         public string Version {
-            get; private set;
+            get;
+            private set;
         } = "";
 
         // General helper functions, make code cleaner
+        
+        /// <summary>
+        /// Function converts [data] a byte array, to a ASCII string representation
+        /// </summary>
         public static string ConvertASCII(byte[] data, int offset) {
             int length = Array.IndexOf<byte>(data, 0, offset) - offset;
-            if (length < 0) {
-                length = data.Length - offset;
-            }
+            if (length < 0) length = data.Length - offset;
 
             return Encoding.ASCII.GetString(data, offset, length);
         }
@@ -399,19 +412,41 @@ namespace libdebug {
             // Create and return an IPAddress from the broadcast address byte array
             return new IPAddress(broadcastAddress);
         }
+        /// <summary>
+        /// Alternate Version of [CheckConnected] which returns boolean value
+        /// </summary>
+        /// <returns>Returns True if the Global Boolean variable [IsConnected] is true, otherwise False</returns>
+        private bool CheckConnected2()
+            => IsConnected;
 
+        /// <summary>
+        /// Alternate Version of [CheckDebugging] which returns boolean value
+        /// </summary>
+        /// <returns>Returns True if the Global Boolean variable [IsDebugging] is true, otherwise False</returns>
+        private bool CheckDebugging2()
+            => IsDebugging;
+
+        /// <summary>
+        /// Function to throw [libdebug: not connected] exception if [IsConnected] is false.
+        /// </summary>
         private void CheckConnected() {
             if (!IsConnected) {
                 throw new Exception("libdebug: not connected");
             }
         }
 
+        /// <summary>
+        /// Function to throw [libdebug: not debugging] exception if [IsDebugging] is false.
+        /// </summary>
         private void CheckDebugging() {
             if (!IsDebugging) {
                 throw new Exception("libdebug: not debugging");
             }
         }
-
+        /// <summary>
+        /// Function to check the status received from the PS4 System...
+        /// In case of the PS4 System not sending the [CMD_SUCCESS] code, a exception will be thrown.
+        /// </summary>
         private void CheckStatus(string str = "") {
             CMD_STATUS status = ReceiveStatus();
             if (status != CMD_STATUS.CMD_SUCCESS) {
@@ -445,7 +480,10 @@ namespace libdebug {
             sock.Receive(status, 4, SocketFlags.None);
             return (CMD_STATUS)BitConverter.ToUInt32(status, 0);
         }
-
+       
+        /// <summary>
+        /// Function to send a new CMD (Command) Packet to the PS4 System, rewriting this to be boolean instead.
+        /// </summary>
         private void SendCMDPacket(CMDS cmd, int length, params object[] fields) {
             CMDPacket packet = new CMDPacket();
             packet.magic = CMD_PACKET_MAGIC;
