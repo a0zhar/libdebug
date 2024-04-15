@@ -36,7 +36,6 @@ namespace libdebug {
         private const int PROC_MAP_ENTRY_SIZE = 58;
         private const int PROC_PROC_INFO_SIZE = 188;
 
-
         /// <summary>
         /// Allocate RWX memory in the process space
         /// </summary>
@@ -367,14 +366,22 @@ namespace libdebug {
         /// <param name="extraValue">Optional extra value for comparison</param>
         /// <returns>A list of addresses where the value was found</returns>
         public List<ulong> ScanProcess<T>(int pid, ScanCompareType compareType, T value, T extraValue = default) {
+            // Check if the connection from our PC to the PS4 System is established
             CheckConnected();
 
+            // The value variable-size (same as that u would get by doing ex: sizeof(int))
             int typeLength = 0;
-            ScanValueType valueType;
-            byte[] valueBuffer, extraValueBuffer = null;
 
-            // fill in variables
+            // The value variable-type
+            ScanValueType valueType;
+
+            // Define byte array buffer for value and for extra value if needed
+            byte[] valueBuffer;
+            byte[] extraValueBuffer = null;
+
+            // Determine the type of the value and fill in the corresponding variables
             switch (value) {
+                // If the variable <value> is of boolean (true/false) type
                 case bool b:
                     valueType = ScanValueType.valTypeUInt8;
                     typeLength = 1;
@@ -383,6 +390,7 @@ namespace libdebug {
                         extraValueBuffer = BitConverter.GetBytes((bool)(object)extraValue);
                     break;
 
+                // If the variable <value> is of 8-bit signed integer (sbyte) type
                 case sbyte sb:
                     valueType = ScanValueType.valTypeInt8;
                     valueBuffer = BitConverter.GetBytes(sb);
@@ -391,6 +399,7 @@ namespace libdebug {
                         extraValueBuffer = BitConverter.GetBytes((sbyte)(object)extraValue);
                     break;
 
+                // If the variable <value> is of 8-bit unsigned integer (byte) type
                 case byte b:
                     valueType = ScanValueType.valTypeUInt8;
                     valueBuffer = BitConverter.GetBytes(b);
@@ -399,6 +408,7 @@ namespace libdebug {
                         extraValueBuffer = BitConverter.GetBytes((byte)(object)extraValue);
                     break;
 
+                // If the variable <value> is of 16-bit signed integer (short) type
                 case short s:
                     valueType = ScanValueType.valTypeInt16;
                     valueBuffer = BitConverter.GetBytes(s);
@@ -407,6 +417,7 @@ namespace libdebug {
                         extraValueBuffer = BitConverter.GetBytes((short)(object)extraValue);
                     break;
 
+                // If the variable <value> is of 16-bit unsigned integer (ushort) type
                 case ushort us:
                     valueType = ScanValueType.valTypeUInt16;
                     valueBuffer = BitConverter.GetBytes(us);
@@ -415,6 +426,7 @@ namespace libdebug {
                         extraValueBuffer = BitConverter.GetBytes((ushort)(object)extraValue);
                     break;
 
+                // If the variable <value> is of 32-bit signed integer (int) type
                 case int i:
                     valueType = ScanValueType.valTypeInt32;
                     valueBuffer = BitConverter.GetBytes(i);
@@ -423,6 +435,7 @@ namespace libdebug {
                         extraValueBuffer = BitConverter.GetBytes((int)(object)extraValue);
                     break;
 
+                // If the variable <value> is of 32-bit unsigned integer (uint) type
                 case uint ui:
                     valueType = ScanValueType.valTypeUInt32;
                     valueBuffer = BitConverter.GetBytes(ui);
@@ -431,6 +444,7 @@ namespace libdebug {
                         extraValueBuffer = BitConverter.GetBytes((uint)(object)extraValue);
                     break;
 
+                // If the variable <value> is of 64-bit signed integer (long) type
                 case long l:
                     valueType = ScanValueType.valTypeInt64;
                     valueBuffer = BitConverter.GetBytes(l);
@@ -439,6 +453,7 @@ namespace libdebug {
                         extraValueBuffer = BitConverter.GetBytes((long)(object)extraValue);
                     break;
 
+                // If the variable <value> is of 64-bit unsigned integer (ulong) type
                 case ulong ul:
                     valueType = ScanValueType.valTypeUInt64;
                     valueBuffer = BitConverter.GetBytes(ul);
@@ -447,6 +462,7 @@ namespace libdebug {
                         extraValueBuffer = BitConverter.GetBytes((ulong)(object)extraValue);
                     break;
 
+                // If the variable <value> is of single-precision floating-point (float) type
                 case float f:
                     valueType = ScanValueType.valTypeFloat;
                     valueBuffer = BitConverter.GetBytes(f);
@@ -455,6 +471,7 @@ namespace libdebug {
                         extraValueBuffer = BitConverter.GetBytes((float)(object)extraValue);
                     break;
 
+                // If the variable <value> is of double-precision floating-point (double) type
                 case double d:
                     valueType = ScanValueType.valTypeDouble;
                     valueBuffer = BitConverter.GetBytes(d);
@@ -463,23 +480,40 @@ namespace libdebug {
                         extraValueBuffer = BitConverter.GetBytes((double)(object)extraValue);
                     break;
 
+                // If the variable <value> is of string type
                 case string s:
                     valueType = ScanValueType.valTypeString;
                     valueBuffer = Encoding.ASCII.GetBytes(s);
                     typeLength = valueBuffer.Length;
                     break;
 
+                // If the variable <value> is of byte array type
                 case byte[] ba:
                     valueType = ScanValueType.valTypeArrBytes;
                     valueBuffer = ba;
                     typeLength = valueBuffer.Length;
                     break;
 
-                default: throw new NotSupportedException("Requested scan value type is not supported! (Feed in Byte[] instead.)");
+                // If the variable <value> is neither one of the above, we throw a new exception
+                default:
+                    throw new NotSupportedException(
+                        "The Requested scan value variable type is unsupported! it's neither one of below:\n" +
+                        "bool,sbyte,byte,byte[],string,double,float,ulong,long,uint,int,ushort,short...\n\n" +
+                        "Feed in Byte[] instead!"
+                    );
             };
 
-            // send packet
-            SendCMDPacket(CMDS.CMD_PROC_SCAN, CMD_PROC_SCAN_PACKET_SIZE, pid, (byte)valueType, (byte)compareType, (int)(extraValue == null ? typeLength : typeLength * 2));
+            // Build a new CMD (Command) Packet, and try to send it to our PS4 System!
+            SendCMDPacket(
+                CMDS.CMD_PROC_SCAN,
+                CMD_PROC_SCAN_PACKET_SIZE,
+                pid,
+                (byte)valueType,
+                (byte)compareType,
+                (int)(extraValue == null ? typeLength : typeLength * 2)
+            );
+
+            // Check the status of the just-sent packet
             CheckStatus();
 
             SendData(valueBuffer, typeLength);
@@ -495,9 +529,8 @@ namespace libdebug {
             List<ulong> results = new List<ulong>();
             while (true) {
                 ulong result = BitConverter.ToUInt64(ReceiveData(sizeof(ulong)), 0);
-                if (result == 0xFFFFFFFFFFFFFFFF) {
+                if (result == 0xFFFFFFFFFFFFFFFF)
                     break;
-                }
 
                 results.Add(result);
             }
