@@ -59,105 +59,113 @@ namespace libdebug {
         /// <param name="args">Arguments array</param>
         /// <returns></returns>
         public ulong Call(int pid, ulong rpcstub, ulong address, params object[] args) {
-            CheckConnected();
+            CheckConnected(); // Check if the connection is active
 
-            // need to do this in a custom format
+            // Create a custom format packet
             CMDPacket packet = new CMDPacket {
                 magic = CMD_PACKET_MAGIC,
                 cmd = (uint)CMDS.CMD_PROC_CALL,
                 datalen = (uint)CMD_PROC_CALL_PACKET_SIZE
             };
-            SendData(GetBytesFromObject(packet), CMD_PACKET_SIZE);
+            SendData(GetBytesFromObject(packet), CMD_PACKET_SIZE); // Send the packet
 
-            MemoryStream rs = new MemoryStream();
-            rs.Write(BitConverter.GetBytes(pid), 0, sizeof(int));
-            rs.Write(BitConverter.GetBytes(rpcstub), 0, sizeof(ulong));
-            rs.Write(BitConverter.GetBytes(address), 0, sizeof(ulong));
+            MemoryStream rs = new MemoryStream(); // Create a memory stream to store the arguments
+            rs.Write(BitConverter.GetBytes(pid), 0, sizeof(int)); // Write PID to the stream
+            rs.Write(BitConverter.GetBytes(rpcstub), 0, sizeof(ulong)); // Write RPC stub to the stream
+            rs.Write(BitConverter.GetBytes(address), 0, sizeof(ulong)); // Write address to the stream
 
-            int num = 0;
+            int num = 0; // Counter to track the number of arguments processed
+
+            byte[] tmp;      // Temporary byte array for argument conversion
+            int size_to_use; // Size of the argument in bytes
+
+            // Loop through each argument
             foreach (object arg in args) {
-                byte[] bytes = new byte[8];
+                byte[] bytes = new byte[8]; // Byte array to store the argument bytes
 
+                // Determine the type of the argument and convert it to bytes
                 switch (arg) {
-                    case char c: {
-                        byte[] tmp = BitConverter.GetBytes(c);
-                        Buffer.BlockCopy(tmp, 0, bytes, 0, sizeof(char));
+                    case char c:
+                        tmp = BitConverter.GetBytes(c);
+                        size_to_use = sizeof(char);
+                        break;
 
-                        byte[] pad = new byte[sizeof(ulong) - sizeof(char)];
-                        Buffer.BlockCopy(pad, 0, bytes, sizeof(char), pad.Length);
+                    case byte b:
+                        tmp = BitConverter.GetBytes(b);
+                        size_to_use = sizeof(byte);
                         break;
-                    }
-                    case byte b: {
-                        byte[] tmp = BitConverter.GetBytes(b);
-                        Buffer.BlockCopy(tmp, 0, bytes, 0, sizeof(byte));
 
-                        byte[] pad = new byte[sizeof(ulong) - sizeof(byte)];
-                        Buffer.BlockCopy(pad, 0, bytes, sizeof(byte), pad.Length);
+                    case short s:
+                        tmp = BitConverter.GetBytes(s);
+                        size_to_use = sizeof(short);
                         break;
-                    }
-                    case short s: {
-                        byte[] tmp = BitConverter.GetBytes(s);
-                        Buffer.BlockCopy(tmp, 0, bytes, 0, sizeof(short));
 
-                        byte[] pad = new byte[sizeof(ulong) - sizeof(short)];
-                        Buffer.BlockCopy(pad, 0, bytes, sizeof(short), pad.Length);
+                    case ushort us:
+                        tmp = BitConverter.GetBytes(us);
+                        size_to_use = sizeof(ushort);
                         break;
-                    }
-                    case ushort us: {
-                        byte[] tmp = BitConverter.GetBytes(us);
-                        Buffer.BlockCopy(tmp, 0, bytes, 0, sizeof(ushort));
 
-                        byte[] pad = new byte[sizeof(ulong) - sizeof(ushort)];
-                        Buffer.BlockCopy(pad, 0, bytes, sizeof(ushort), pad.Length);
+                    case int i:
+                        tmp = BitConverter.GetBytes(i);
+                        size_to_use = sizeof(int);
                         break;
-                    }
-                    case int i: {
-                        byte[] tmp = BitConverter.GetBytes(i);
-                        Buffer.BlockCopy(tmp, 0, bytes, 0, sizeof(int));
 
-                        byte[] pad = new byte[sizeof(ulong) - sizeof(int)];
-                        Buffer.BlockCopy(pad, 0, bytes, sizeof(int), pad.Length);
+                    case uint ui:
+                        tmp = BitConverter.GetBytes(ui);
+                        size_to_use = sizeof(uint);
                         break;
-                    }
-                    case uint ui: {
-                        byte[] tmp = BitConverter.GetBytes(ui);
-                        Buffer.BlockCopy(tmp, 0, bytes, 0, sizeof(uint));
 
-                        byte[] pad = new byte[sizeof(ulong) - sizeof(uint)];
-                        Buffer.BlockCopy(pad, 0, bytes, sizeof(uint), pad.Length);
+                    case long l:
+                        tmp = BitConverter.GetBytes(l);
+                        size_to_use = sizeof(long);
                         break;
-                    }
-                    case long l: {
-                        byte[] tmp = BitConverter.GetBytes(l);
-                        Buffer.BlockCopy(tmp, 0, bytes, 0, sizeof(long));
-                        break;
-                    }
-                    case ulong ul: {
-                        byte[] tmp = BitConverter.GetBytes(ul);
-                        Buffer.BlockCopy(tmp, 0, bytes, 0, sizeof(ulong));
-                        break;
-                    }
-                }
 
+                    case ulong ul:
+                        tmp = BitConverter.GetBytes(ul);
+                        size_to_use = sizeof(ulong);
+                        break;
+
+                    default:
+                        // Throw an exception for unsupported argument types
+                        throw new NotSupportedException(
+                            $"Warning!!! The Provided Argument Type ({arg.GetType()}) is Unsupported!!!\n" +
+                            "Argument Type is neither one of the following types:\n" +
+                            "char, byte, short, ushort, int, uint, long, ulong"
+                        );
+                };
+
+                // Copy the argument bytes to the byte array
+                Buffer.BlockCopy(tmp, 0, bytes, 0, size_to_use);
+
+                // Create padding bytes to fill the remaining space in the ulong
+                byte[] pad = new byte[sizeof(ulong) - size_to_use];
+
+                // Copy the padding bytes to the byte array
+                Buffer.BlockCopy(pad, 0, bytes, size_to_use, pad.Length);
+
+                // Write the bytes to the memory stream
                 rs.Write(bytes, 0, bytes.Length);
-                num++;
+                num++; // Increment the argument counter
             }
 
-            if (num > 6) {
-                throw new Exception("libdbg: too many arguments");
-            }
+            // Check the number of arguments
+            if (num > 6) throw new Exception("libdebug: too many arguments");
 
+            // If there are less than 6 arguments, pad the remaining slots with zeros
             if (num < 6) {
                 for (int i = 0; i < (6 - num); i++) {
                     rs.Write(BitConverter.GetBytes((ulong)0), 0, sizeof(ulong));
                 }
             }
 
+            // Send the data
             SendData(rs.ToArray(), CMD_PROC_CALL_PACKET_SIZE);
-            rs.Dispose();
+            rs.Dispose(); // Dispose of the memory stream
 
+            // Check the status
             CheckStatus();
 
+            // Receive and return the result
             byte[] data = ReceiveData(PROC_CALL_SIZE);
             return BitConverter.ToUInt64(data, 4);
         }
