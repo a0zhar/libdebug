@@ -204,72 +204,49 @@ namespace libdebug {
         }
 
         private void SendCMDPacket(CMDS cmd, int length, params object[] fields) {
-            CMDPacket packet = new CMDPacket {
-                magic = CMD_PACKET_MAGIC,
-                cmd = (uint)cmd,
-                datalen = (uint)length
-            };
+            CMDPacket packet = new CMDPacket();
+            packet.magic = CMD_PACKET_MAGIC;
+            packet.cmd = (uint)cmd;
+            packet.datalen = (uint)length;
 
             byte[] data = null;
 
             if (length > 0) {
-                MemoryStream rs = new MemoryStream();
-                foreach (object field in fields) {
-                    byte[] bytes = null;
+                // Initialize a MemoryStream to store the packet data
+                using (MemoryStream rs = new MemoryStream()) {
+                    // Iterate through each field in the provided fields
+                    foreach (object field in fields) {
+                        byte[] bytes = null;
 
-                    switch (field) {
-                        case char c:
-                        bytes = new byte[1];
-                        bytes[0] = BitConverter.GetBytes(c)[0];
-                        break;
+                        // Determine the type of the field and convert it to bytes accordingly
+                        switch (field) {
+                            case char c:    bytes = new byte[1] { BitConverter.GetBytes(c)[0] }; break;
+                            case byte b:    bytes = new byte[1] { b }; break;
+                            case short s:   bytes = BitConverter.GetBytes(s);  break;
+                            case ushort us: bytes = BitConverter.GetBytes(us); break;
+                            case int i:     bytes = BitConverter.GetBytes(i);  break;
+                            case uint u:    bytes = BitConverter.GetBytes(u);  break;
+                            case long l:    bytes = BitConverter.GetBytes(l);  break;
+                            case ulong ul:  bytes = BitConverter.GetBytes(ul); break;
+                            case byte[] ba: bytes = ba;                        break;
+                        };
 
-                        case byte b:
-                        bytes = new byte[1];
-                        bytes[0] = BitConverter.GetBytes(b)[0];
-                        break;
-
-                        case short s:
-                        bytes = BitConverter.GetBytes(s);
-                        break;
-
-                        case ushort us:
-                        bytes = BitConverter.GetBytes(us);
-                        break;
-
-                        case int i:
-                        bytes = BitConverter.GetBytes(i);
-                        break;
-
-                        case uint u:
-                        bytes = BitConverter.GetBytes(u);
-                        break;
-
-                        case long l:
-                        bytes = BitConverter.GetBytes(l);
-                        break;
-
-                        case ulong ul:
-                        bytes = BitConverter.GetBytes(ul);
-                        break;
-
-                        case byte[] ba:
-                        bytes = ba;
-                        break;
+                        // Write the bytes to the MemoryStream
+                        if (bytes != null)
+                            rs.Write(bytes, 0, bytes.Length);
                     }
 
-                    if (bytes != null)
-                        rs.Write(bytes, 0, bytes.Length);
+                    // Convert the MemoryStream to byte array?
+                    data = rs.ToArray();
+                    rs.Dispose();
                 }
-
-                data = rs.ToArray();
-                rs.Dispose();
             }
 
+            // Send the packet size?
             SendData(GetBytesFromObject(packet), CMD_PACKET_SIZE);
 
-            if (data != null) {
-                SendData(data, length);
-            }
+            // Send the packet data if present?
+            if (data != null) SendData(data, length);
         }
 
         private void SendData(byte[] data, int length) {
@@ -281,7 +258,8 @@ namespace libdebug {
                 if (left > NET_MAX_LENGTH) {
                     byte[] bytes = SubArray(data, offset, NET_MAX_LENGTH);
                     sent = sock.Send(bytes, NET_MAX_LENGTH, SocketFlags.None);
-                } else {
+                }
+                else {
                     byte[] bytes = SubArray(data, offset, left);
                     sent = sock.Send(bytes, left, SocketFlags.None);
                 }
@@ -354,7 +332,8 @@ namespace libdebug {
             IPAddress addr = null;
             try {
                 addr = IPAddress.Parse(ip);
-            } catch (FormatException ex) {
+            }
+            catch (FormatException ex) {
                 throw ex;
             }
 
@@ -384,7 +363,8 @@ namespace libdebug {
                         byte[] resp = uc.Receive(ref server);
                         if (BitConverter.ToUInt32(resp, 0) == BROADCAST_MAGIC)
                             return server.Address.ToString();
-                    } catch (Exception ex) {
+                    }
+                    catch (Exception ex) {
                         Console.WriteLine("Wrong IP, trying next one...");
                     }
                 }
@@ -409,7 +389,8 @@ namespace libdebug {
                     sock.Connect(enp);
                     IsConnected = true;
                     Console.WriteLine("Connected!");
-                } catch (Exception ex) {
+                }
+                catch (Exception ex) {
                     Console.WriteLine(ex.ToString());
                     return false;
                 }
@@ -425,7 +406,8 @@ namespace libdebug {
             try {
                 sock.Shutdown(SocketShutdown.Both);
                 sock.Close();
-            } catch (Exception ex) {
+            }
+            catch (Exception ex) {
                 Console.WriteLine(ex.ToString());
                 return false;
             }
