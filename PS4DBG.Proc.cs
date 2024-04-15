@@ -61,16 +61,18 @@ namespace libdebug {
         public ulong Call(int pid, ulong rpcstub, ulong address, params object[] args) {
             CheckConnected(); // Check if the connection is active
 
-            // Create a custom format packet
-            CMDPacket packet = new CMDPacket {
-                magic = CMD_PACKET_MAGIC,
-                cmd = (uint)CMDS.CMD_PROC_CALL,
-                datalen = (uint)CMD_PROC_CALL_PACKET_SIZE
-            };
-            SendData(GetBytesFromObject(packet), CMD_PACKET_SIZE); // Send the packet
+            // Build a new CMD (Command) Packet that will be sent to the PS4 System
+            CMDPacket packet = new CMDPacket();
+            packet.magic = CMD_PACKET_MAGIC;
+            packet.cmd = (uint)CMDS.CMD_PROC_CALL;
+            packet.datalen = (uint)CMD_PROC_CALL_PACKET_SIZE;
 
-            MemoryStream rs = new MemoryStream(); // Create a memory stream to store the arguments
-            rs.Write(BitConverter.GetBytes(pid), 0, sizeof(int)); // Write PID to the stream
+            // Send the packet to the PS4 System
+            SendData(GetBytesFromObject(packet), CMD_PACKET_SIZE);
+
+            // Create a memory stream to store the arguments
+            MemoryStream rs = new MemoryStream();
+            rs.Write(BitConverter.GetBytes(pid), 0, sizeof(int));       // Write PID to the stream
             rs.Write(BitConverter.GetBytes(rpcstub), 0, sizeof(ulong)); // Write RPC stub to the stream
             rs.Write(BitConverter.GetBytes(address), 0, sizeof(ulong)); // Write address to the stream
 
@@ -149,7 +151,12 @@ namespace libdebug {
             }
 
             // Check the number of arguments
-            if (num > 6) throw new Exception("libdebug: too many arguments");
+            if (num > 6) {
+                // cleanup memory stream
+                rs.Dispose();
+                // throw the exception
+                throw new Exception($"libdebug: too many arguments! max 6, current is {num}");
+            }
 
             // If there are less than 6 arguments, pad the remaining slots with zeros
             if (num < 6) {
@@ -158,16 +165,17 @@ namespace libdebug {
                 }
             }
 
-            // Send the data
+            // Now send the memory stream to our PS4 System
             SendData(rs.ToArray(), CMD_PROC_CALL_PACKET_SIZE);
-            rs.Dispose(); // Dispose of the memory stream
+
+            // Perform some cleanup
+            rs.Dispose();
 
             // Check the status
             CheckStatus();
 
             // Receive and return the result
-            byte[] data = ReceiveData(PROC_CALL_SIZE);
-            return BitConverter.ToUInt64(data, 4);
+            return BitConverter.ToUInt64(ReceiveData(PROC_CALL_SIZE), 4);
         }
 
         /// <summary>
@@ -347,6 +355,7 @@ namespace libdebug {
 
                 while (true) {
                     byte value = ReadMemory(pid, address + i, sizeof(byte))[0];
+
                     if (value == 0) {
                         break;
                     }
