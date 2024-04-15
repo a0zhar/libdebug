@@ -355,8 +355,7 @@ namespace libdebug {
         /// Get the current ps4debug version from console
         /// </summary>
         public string GetConsoleDebugVersion() {
-            if (Version != "")
-                return Version;
+            if (Version != "") return Version;
 
             CheckConnected();
 
@@ -374,21 +373,30 @@ namespace libdebug {
             return Version;
         }
 
-        /// <summary>
-        /// Get current ps4debug version from library
-        /// </summary>
+        /// <summary> Get current ps4debug version from library </summary>
         public string GetLibraryDebugVersion() => LIBRARY_VERSION;
 
-        // General networking functions
+        /// <summary>
+        /// Calculates the broadcast address for a given IP address and subnet mask
+        /// The [address] param is the IP Address, and the [subnetMask] is the subnet mask lol
+        /// </summary>
+        /// <returns>The broadcast address</returns>
         private static IPAddress GetBroadcastAddress(IPAddress address, IPAddress subnetMask) {
-            byte[] ipAdressBytes = address.GetAddressBytes();
+            // Get the byte arrays of the IP address and subnet mask
+            byte[] ipAddressBytes = address.GetAddressBytes();
             byte[] subnetMaskBytes = subnetMask.GetAddressBytes();
 
-            byte[] broadcastAddress = new byte[ipAdressBytes.Length];
+            // Create a byte array to hold the broadcast address
+            byte[] broadcastAddress = new byte[ipAddressBytes.Length];
+
+            // Calculate the broadcast address byte by byte
             for (int i = 0; i < broadcastAddress.Length; i++) {
-                broadcastAddress[i] = (byte)(ipAdressBytes[i] | (subnetMaskBytes[i] ^ 255));
+                // Calculate the broadcast address byte using the bitwise OR (|)
+                // and XOR (^) operations
+                broadcastAddress[i] = (byte)(ipAddressBytes[i] | (subnetMaskBytes[i] ^ 255));
             }
 
+            // Create and return an IPAddress from the broadcast address byte array
             return new IPAddress(broadcastAddress);
         }
 
