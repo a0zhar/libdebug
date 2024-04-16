@@ -372,17 +372,10 @@ namespace libdebug {
 
             return (T)GetObjectFromBytes(ReadMemory(pid, address, Marshal.SizeOf(typeof(T))), typeof(T));
         }
-
         /// <summary>
-        /// Scans a process for a given value
+        /// EXPERIMENTAL - CONSOLE SCAN FEATURE
         /// </summary>
-        /// <typeparam name="T">The type of value to scan for</typeparam>
-        /// <param name="pid">The process ID to scan</param>
-        /// <param name="compareType">The comparison type</param>
-        /// <param name="value">The value to scan for</param>
-        /// <param name="extraValue">Optional extra value for comparison</param>
-        /// <returns>A list of addresses where the value was found</returns>
-        public List<ulong> ScanProcess<T>(int pid, ScanCompareType compareType, T value, T extraValue = default) {
+        public List<ulong> Console_ScanProcess<T>(int pid, ScanCompareType compareType, T value, T extraValue = default) {
             // Check if the connection from our PC to the PS4 System is established
             CheckConnected();
 
@@ -413,6 +406,189 @@ namespace libdebug {
                     valueBuffer = BitConverter.GetBytes(sb);
                     typeLength = 1;
                     if (extraValue != null)
+                        extraValueBuffer = BitConverter.GetBytes((sbyte)(object)extraValue);
+                    break;
+
+                // If the variable <value> is of 8-bit unsigned integer (byte) type
+                case byte b:
+                    valueType = ScanValueType.valTypeUInt8;
+                    valueBuffer = BitConverter.GetBytes(b);
+                    typeLength = 1;
+                    if (extraValue != null)
+                        extraValueBuffer = BitConverter.GetBytes((byte)(object)extraValue);
+                    break;
+
+                // If the variable <value> is of 16-bit signed integer (short) type
+                case short s:
+                    valueType = ScanValueType.valTypeInt16;
+                    valueBuffer = BitConverter.GetBytes(s);
+                    typeLength = 2;
+                    if (extraValue != null)
+                        extraValueBuffer = BitConverter.GetBytes((short)(object)extraValue);
+                    break;
+
+                // If the variable <value> is of 16-bit unsigned integer (ushort) type
+                case ushort us:
+                    valueType = ScanValueType.valTypeUInt16;
+                    valueBuffer = BitConverter.GetBytes(us);
+                    typeLength = 2;
+                    if (extraValue != null)
+                        extraValueBuffer = BitConverter.GetBytes((ushort)(object)extraValue);
+                    break;
+
+                // If the variable <value> is of 32-bit signed integer (int) type
+                case int i:
+                    valueType = ScanValueType.valTypeInt32;
+                    valueBuffer = BitConverter.GetBytes(i);
+                    typeLength = 4;
+                    if (extraValue != null)
+                        extraValueBuffer = BitConverter.GetBytes((int)(object)extraValue);
+                    break;
+
+                // If the variable <value> is of 32-bit unsigned integer (uint) type
+                case uint ui:
+                    valueType = ScanValueType.valTypeUInt32;
+                    valueBuffer = BitConverter.GetBytes(ui);
+                    typeLength = 4;
+                    if (extraValue != null)
+                        extraValueBuffer = BitConverter.GetBytes((uint)(object)extraValue);
+                    break;
+
+                // If the variable <value> is of 64-bit signed integer (long) type
+                case long l:
+                    valueType = ScanValueType.valTypeInt64;
+                    valueBuffer = BitConverter.GetBytes(l);
+                    typeLength = 8;
+                    if (extraValue != null)
+                        extraValueBuffer = BitConverter.GetBytes((long)(object)extraValue);
+                    break;
+
+                // If the variable <value> is of 64-bit unsigned integer (ulong) type
+                case ulong ul:
+                    valueType = ScanValueType.valTypeUInt64;
+                    valueBuffer = BitConverter.GetBytes(ul);
+                    typeLength = 8;
+                    if (extraValue != null)
+                        extraValueBuffer = BitConverter.GetBytes((ulong)(object)extraValue);
+                    break;
+
+                // If the variable <value> is of single-precision floating-point (float) type
+                case float f:
+                    valueType = ScanValueType.valTypeFloat;
+                    valueBuffer = BitConverter.GetBytes(f);
+                    typeLength = 4;
+                    if (extraValue != null)
+                        extraValueBuffer = BitConverter.GetBytes((float)(object)extraValue);
+                    break;
+
+                // If the variable <value> is of double-precision floating-point (double) type
+                case double d:
+                    valueType = ScanValueType.valTypeDouble;
+                    valueBuffer = BitConverter.GetBytes(d);
+                    typeLength = 8;
+                    if (extraValue != null)
+                        extraValueBuffer = BitConverter.GetBytes((double)(object)extraValue);
+                    break;
+
+                // If the variable <value> is of string type
+                case string s:
+                    valueType = ScanValueType.valTypeString;
+                    valueBuffer = Encoding.ASCII.GetBytes(s);
+                    typeLength = valueBuffer.Length;
+                    break;
+
+                // If the variable <value> is of byte array type
+                case byte[] ba:
+                    valueType = ScanValueType.valTypeArrBytes;
+                    valueBuffer = ba;
+                    typeLength = valueBuffer.Length;
+                    break;
+
+                // If the variable <value> is neither one of the above, we throw a new exception
+                default:
+                    throw new NotSupportedException(
+                        "The Requested scan value variable type is unsupported! it's neither one of below:\n" +
+                        "bool,sbyte,byte,byte[],string,double,float,ulong,long,uint,int,ushort,short...\n\n" +
+                        "Feed in Byte[] instead!"
+                    );
+            }
+
+            // Build a new CMD (Command) Packet, and try to send it to our PS4 System!
+            SendCMDPacket(
+                CMDS.CMD_PROC_CONSOLE_BASED_SCAN,
+                CMD_PROC_SCAN_PACKET_SIZE,
+                pid,
+                (byte)valueType,
+                (byte)compareType,
+                (int)(extraValue == null ? typeLength : typeLength * 2)
+            );
+
+            // Check the status of the just-sent packet
+            CheckStatus();
+
+            SendData(valueBuffer, typeLength);
+            if (extraValueBuffer != null) {
+                SendData(extraValueBuffer, typeLength);
+            }
+
+            CheckStatus();
+
+            // Receive the count of results
+            int resultCount = BitConverter.ToInt32(ReceiveData(sizeof(int)), 0);
+
+            // Receive all results at once
+            byte[] resultsData = ReceiveData(sizeof(ulong) * resultCount);
+
+            // Convert received data to ulong values
+            List<ulong> results = new List<ulong>();
+            for (int i = 0; i < resultCount; i++) {
+                ulong result = BitConverter.ToUInt64(resultsData, i * sizeof(ulong));
+                results.Add(result);
+            }
+
+            return results;
+        }
+
+        /// <summary>
+        /// Scans a process for a given value
+        /// </summary>
+        /// <typeparam name="T">The type of value to scan for</typeparam>
+        /// <param name="pid">The process ID to scan</param>
+        /// <param name="compareType">The comparison type</param>
+        /// <param name="value">The value to scan for</param>
+        /// <param name="extraValue">Optional extra value for comparison</param>
+        /// <returns>A list of addresses where the value was found</returns>
+        public List<ulong> ScanProcess<T>(int pid, ScanCompareType compareType, T value, T extraValue = default) {
+            // Check if the connection from our PC to the PS4 System is established
+            CheckConnected();
+
+            // The value variable-size (same as that u would get by doing ex: sizeof(int))
+            int typeLength = 0;
+
+            // The value variable-type
+            ScanValueType valueType;
+
+            // Define byte array buffer for value and for extra value if needed
+            byte[] valueBuffer;
+            byte[] extraValueBuffer = null;
+            
+            // Determine the type of the value and fill in the corresponding variables
+            switch (value) {
+                // If the variable <value> is of boolean (true/false) type
+                case bool b:
+                    valueType = ScanValueType.valTypeUInt8;
+                    typeLength = 1;
+                    valueBuffer = BitConverter.GetBytes(b);
+                    if (extraValue != null)
+                        extraValueBuffer = BitConverter.GetBytes((bool)(object)extraValue);
+                    break;
+
+                // If the variable <value> is of 8-bit signed integer (sbyte) type
+                case sbyte sb:
+                    valueType = ScanValueType.valTypeInt8;
+                    valueBuffer = BitConverter.GetBytes(sb);
+                    typeLength = 1;
+                    if (extraValue != null) 
                         extraValueBuffer = BitConverter.GetBytes((sbyte)(object)extraValue);
                     break;
 
