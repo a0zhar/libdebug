@@ -1,6 +1,6 @@
 ﻿namespace libdebug {
 
-    public class PS4DBG_ENUMS {
+    public partial class PS4DBG {
 
         public enum CMD_STATUS : uint {
             CMD_SUCCESS = 0x80000000,
@@ -14,7 +14,9 @@
         public enum CMDS : uint {
             CMD_VERSION = 0xBD000001,
 
+            // Process Related Command Values
             CMD_PROC_LIST = 0xBDAA0001,
+
             CMD_PROC_READ = 0xBDAA0002,
             CMD_PROC_WRITE = 0xBDAA0003,
             CMD_PROC_MAPS = 0xBDAA0004,
@@ -27,7 +29,9 @@
             CMD_PROC_ALLOC = 0xBDAA000B,
             CMD_PROC_FREE = 0xBDAA000C,
 
+            // Debugger Related Command Values
             CMD_DEBUG_ATTACH = 0xBDBB0001,
+
             CMD_DEBUG_DETACH = 0xBDBB0002,
             CMD_DEBUG_BREAKPT = 0xBDBB0003,
             CMD_DEBUG_WATCHPT = 0xBDBB0004,
@@ -44,41 +48,118 @@
             CMD_DEBUG_THRINFO = 0xBDBB0011,
             CMD_DEBUG_SINGLESTEP = 0xBDBB0012,
 
+            // Kernel? Related Command Values
             CMD_KERN_BASE = 0xBDCC0001,
+
             CMD_KERN_READ = 0xBDCC0002,
             CMD_KERN_WRITE = 0xBDCC0003,
 
+            // PS4 Console Related Command Values
             CMD_CONSOLE_REBOOT = 0xBDDD0001,
+
             CMD_CONSOLE_END = 0xBDDD0002,
             CMD_CONSOLE_PRINT = 0xBDDD0003,
             CMD_CONSOLE_NOTIFY = 0xBDDD0004,
             CMD_CONSOLE_INFO = 0xBDDD0005,
         };
 
-        // enums
+        /// <summary>
+        /// VM (Virtual Memory) protection flags used for
+        /// specifying memory protection attributes
+        /// </summary>
         public enum VM_PROTECTIONS : uint {
+
+            /// <summary>
+            /// No access allowed
+            /// </summary>
             VM_PROT_NONE = 0x00,
+
+            /// <summary>
+            /// Read access allowed
+            /// </summary>
             VM_PROT_READ = 0x01,
+
+            /// <summary>
+            /// Write access allowed
+            /// </summary>
             VM_PROT_WRITE = 0x02,
+
+            /// <summary>
+            /// Execute access allowed
+            /// </summary>
             VM_PROT_EXECUTE = 0x04,
+
+            /// <summary>
+            /// Default access permissions for reading and writing
+            /// </summary>
             VM_PROT_DEFAULT = VM_PROT_READ | VM_PROT_WRITE,
+
+            /// <summary>
+            /// Full access permissions for reading, writing, and executing
+            /// </summary>
             VM_PROT_ALL = VM_PROT_READ | VM_PROT_WRITE | VM_PROT_EXECUTE,
+
+            /// <summary>
+            /// Do not change the current protection
+            /// </summary>
             VM_PROT_NO_CHANGE = 0x08,
+
+            /// <summary>
+            /// Copy-on-write access allowed
+            /// </summary>
             VM_PROT_COPY = 0x10,
+
+            /// <summary>
+            /// Copy-on-write access requested
+            /// </summary>
             VM_PROT_WANTS_COPY = 0x10
         };
 
+        /// <summary>
+        /// WatchPoint (Break On) Flags for the Debugger
+        /// </summary>
         public enum WATCHPT_BREAKTYPE : uint {
-            DBREG_DR7_EXEC = 0x00,	/* break on execute       */
-            DBREG_DR7_WRONLY = 0x01,	/* break on write         */
-            DBREG_DR7_RDWR = 0x03,	/* break on read or write */
+
+            /// <summary>
+            /// Break on Execute.
+            /// </summary>
+            DBREG_DR7_EXEC = 0x00,
+
+            /// <summary>
+            /// Break on Write.
+            /// </summary>
+            DBREG_DR7_WRONLY = 0x01,
+
+            /// <summary>
+            /// Break on Read/Write.
+            /// </summary>
+            DBREG_DR7_RDWR = 0x03
         };
 
+        /// <summary>
+        /// WatchPoint Length Specifications for the Debugger
+        /// </summary>
         public enum WATCHPT_LENGTH : uint {
-            DBREG_DR7_LEN_1 = 0x00,	/* 1 byte length */
+
+            /// <summary>
+            /// 1 byte length
+            /// </summary>
+            DBREG_DR7_LEN_1 = 0x00,
+
+            /// <summary>
+            /// 2 byte length
+            /// </summary>
             DBREG_DR7_LEN_2 = 0x01,
+
+            /// <summary>
+            /// 4 byte length
+            /// </summary>
             DBREG_DR7_LEN_4 = 0x03,
-            DBREG_DR7_LEN_8 = 0x02,
+
+            /// <summary>
+            /// 8 byte length
+            /// </summary>
+            DBREG_DR7_LEN_8 = 0x02
         };
     }
 }
