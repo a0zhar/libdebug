@@ -309,6 +309,21 @@ namespace libdebug {
             return new IPAddress(broadcastAddress);
         }
 
+        /// <summary>
+        /// An alternative to the CheckConnected() function, this one can
+        /// be used in if-statements.
+        /// </summary>
+        /// <returns>True or False depending on [IsConnected] </returns>
+        private bool CheckIsConnected() => IsConnected;
+        
+        /// <summary>
+        /// An alternative to the CheckDebugging() function, this one can
+        /// be used in if-statements.
+        /// </summary>
+        /// <returns>True or False depending on [IsDebugging] </returns>
+        private bool CheckIsDebugging() => IsDebugging;
+
+
         private void CheckConnected() {
             if (!IsConnected) {
                 throw new Exception("libdbg: not connected");
@@ -327,6 +342,7 @@ namespace libdebug {
                 throw new Exception("libdbg status " + ((uint)status).ToString("X"));
             }
         }
+
         private void SendData(byte[] data, int length) {
             int left = length;
             int offset = 0;
