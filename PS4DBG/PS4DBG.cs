@@ -8,31 +8,6 @@ using System.Threading;
 
 namespace libdebug {
     public partial class PS4DBG {
-        private Socket sock = null;
-        private IPEndPoint enp = null;
-
-        public bool IsConnected { get; private set; } = false;
-
-        public bool IsDebugging { get; private set; } = false;
-
-        private Thread debugThread = null;
-
-        // some global values
-        private const string LIBRARY_VERSION = "1.2";
-        private const int PS4DBG_PORT = 744;
-        private const int PS4DBG_DEBUG_PORT = 755;
-        private const int NET_MAX_LENGTH = 8192;
-
-        private const int BROADCAST_PORT = 1010;
-        private const uint BROADCAST_MAGIC = 0xFFFFAAAA;
-
-        // from protocol.h
-        // each packet starts with the magic
-        // each C# base type can translate into a packet field
-        // some packets, such as write take an additional data whose length will be specified in the cmd packet data field structure specific to that cmd type
-        // ushort - 2 bytes | uint - 4 bytes | ulong - 8 bytes
-        private const uint CMD_PACKET_MAGIC = 0xFFAABBCC;
-
         // from debug.h
         //struct debug_breakpoint {
         //    uint32_t valid;
@@ -40,7 +15,16 @@ namespace libdebug {
         //    uint8_t original;
         //};
         public static uint MAX_BREAKPOINTS = 10;
+
         public static uint MAX_WATCHPOINTS = 4;
+        private const uint BROADCAST_MAGIC = 0xFFFFAAAA;
+        private const int BROADCAST_PORT = 1010;
+        // from protocol.h
+        // each packet starts with the magic
+        // each C# base type can translate into a packet field
+        // some packets, such as write take an additional data whose length will be specified in the cmd packet data field structure specific to that cmd type
+        // ushort - 2 bytes | uint - 4 bytes | ulong - 8 bytes
+        private const uint CMD_PACKET_MAGIC = 0xFFAABBCC;
 
         //  struct cmd_packet {
         //    uint32_t magic;
@@ -52,6 +36,51 @@ namespace libdebug {
         //  __attribute__((packed));
         //  #define CMD_PACKET_SIZE 12
         private const int CMD_PACKET_SIZE = 12;
+
+        // some global values
+        private const string LIBRARY_VERSION = "1.2";
+
+        private const int NET_MAX_LENGTH = 8192;
+        private const int PS4DBG_DEBUG_PORT = 755;
+        private const int PS4DBG_PORT = 744;
+        private Thread debugThread = null;
+        private IPEndPoint enp = null;
+        private Socket sock = null;
+        /// <summary>
+        /// Initializes PS4DBG class
+        /// </summary>
+        /// <param name="addr">PlayStation 4 address</param>
+        public PS4DBG(IPAddress addr) {
+            enp = new IPEndPoint(addr, PS4DBG_PORT);
+            sock = new Socket(enp.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
+        }
+
+        /// <summary>
+        /// Initializes PS4DBG class
+        /// </summary>
+        /// <param name="ip">PlayStation 4 ip address</param>
+        public PS4DBG(string ip) {
+            IPAddress addr = null;
+            try {
+                addr = IPAddress.Parse(ip);
+            }
+            catch (FormatException ex) {
+                throw ex;
+            }
+
+            enp = new IPEndPoint(addr, PS4DBG_PORT);
+            sock = new Socket(enp.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
+        }
+
+        public enum CMD_STATUS : uint {
+            CMD_SUCCESS = 0x80000000,
+            CMD_ERROR = 0xF0000001,
+            CMD_TOO_MUCH_DATA = 0xF0000002,
+            CMD_DATA_NULL = 0xF0000003,
+            CMD_ALREADY_DEBUG = 0xF0000004,
+            CMD_INVALID_INDEX = 0xF0000005
+        };
+
         public enum CMDS : uint {
             CMD_VERSION = 0xBD000001,
 
@@ -96,22 +125,6 @@ namespace libdebug {
             CMD_CONSOLE_INFO = 0xBDDD0005,
         };
 
-        public enum CMD_STATUS : uint {
-            CMD_SUCCESS = 0x80000000,
-            CMD_ERROR = 0xF0000001,
-            CMD_TOO_MUCH_DATA = 0xF0000002,
-            CMD_DATA_NULL = 0xF0000003,
-            CMD_ALREADY_DEBUG = 0xF0000004,
-            CMD_INVALID_INDEX = 0xF0000005
-        };
-
-        [StructLayout(LayoutKind.Sequential, Pack = 1)]
-        public struct CMDPacket {
-            public uint magic;
-            public uint cmd;
-            public uint datalen;
-        }
-
         // enums
         public enum VM_PROTECTIONS : uint {
             VM_PROT_NONE = 0x00,
@@ -124,18 +137,23 @@ namespace libdebug {
             VM_PROT_COPY = 0x10,
             VM_PROT_WANTS_COPY = 0x10
         };
-        public enum WATCHPT_LENGTH : uint {
-            DBREG_DR7_LEN_1 = 0x00,	/* 1 byte length */
-            DBREG_DR7_LEN_2 = 0x01,
-            DBREG_DR7_LEN_4 = 0x03,
-            DBREG_DR7_LEN_8 = 0x02,
-        };
+
         public enum WATCHPT_BREAKTYPE : uint {
             DBREG_DR7_EXEC = 0x00,	/* break on execute       */
             DBREG_DR7_WRONLY = 0x01,	/* break on write         */
             DBREG_DR7_RDWR = 0x03,	/* break on read or write */
         };
 
+        public enum WATCHPT_LENGTH : uint {
+            DBREG_DR7_LEN_1 = 0x00,	/* 1 byte length */
+            DBREG_DR7_LEN_2 = 0x01,
+            DBREG_DR7_LEN_4 = 0x03,
+            DBREG_DR7_LEN_8 = 0x02,
+        };
+
+        public bool IsConnected { get; private set; } = false;
+
+        public bool IsDebugging { get; private set; } = false;
         // General helper functions, make code cleaner
         public static string ConvertASCII(byte[] data, int offset) {
             int length = Array.IndexOf<byte>(data, 0, offset) - offset;
@@ -145,23 +163,40 @@ namespace libdebug {
 
             return Encoding.ASCII.GetString(data, offset, length);
         }
-        public static byte[] SubArray(byte[] data, int offset, int length) {
-            byte[] bytes = new byte[length];
-            Buffer.BlockCopy(data, offset, bytes, 0, length);
-            return bytes;
+
+        /// <summary>
+        /// Find the playstation ip
+        /// </summary>
+        public static string FindPlayStation() {
+            UdpClient uc = new UdpClient();
+            IPEndPoint server = new IPEndPoint(IPAddress.Any, 0);
+            uc.EnableBroadcast = true;
+            uc.Client.ReceiveTimeout = 4000;
+
+            byte[] magic = BitConverter.GetBytes(BROADCAST_MAGIC);
+
+            IPAddress addr = null;
+            IPHostEntry host = Dns.GetHostEntry(Dns.GetHostName());
+            foreach (IPAddress ip in host.AddressList) {
+                if (ip.AddressFamily == AddressFamily.InterNetwork) {
+                    addr = ip;
+                }
+            }
+
+            if (addr == null) {
+                throw new Exception("libdbg broadcast error: could not get host ip");
+            }
+
+            uc.Send(magic, magic.Length, new IPEndPoint(GetBroadcastAddress(addr, IPAddress.Parse("255.255.255.0")), BROADCAST_PORT));
+
+            byte[] resp = uc.Receive(ref server);
+            if (BitConverter.ToUInt32(resp, 0) != BROADCAST_MAGIC) {
+                throw new Exception("libdbg broadcast error: wrong magic on udp server");
+            }
+
+            return server.Address.ToString();
         }
-        public static object GetObjectFromBytes(byte[] buffer, Type type) {
-            int size = Marshal.SizeOf(type);
 
-            IntPtr ptr = Marshal.AllocHGlobal(size);
-
-            Marshal.Copy(buffer, 0, ptr, size);
-            object r = Marshal.PtrToStructure(ptr, type);
-
-            Marshal.FreeHGlobal(ptr);
-
-            return r;
-        }
         public static byte[] GetBytesFromObject(object obj) {
             int size = Marshal.SizeOf(obj);
 
@@ -176,6 +211,76 @@ namespace libdebug {
             return bytes;
         }
 
+        public static object GetObjectFromBytes(byte[] buffer, Type type) {
+            int size = Marshal.SizeOf(type);
+
+            IntPtr ptr = Marshal.AllocHGlobal(size);
+
+            Marshal.Copy(buffer, 0, ptr, size);
+            object r = Marshal.PtrToStructure(ptr, type);
+
+            Marshal.FreeHGlobal(ptr);
+
+            return r;
+        }
+
+        public static byte[] SubArray(byte[] data, int offset, int length) {
+            byte[] bytes = new byte[length];
+            Buffer.BlockCopy(data, offset, bytes, 0, length);
+            return bytes;
+        }
+
+        /// <summary>
+        /// Connects to PlayStation 4
+        /// </summary>
+        public void Connect() {
+            if (!IsConnected) {
+                sock.NoDelay = true;
+                sock.ReceiveBufferSize = NET_MAX_LENGTH;
+                sock.SendBufferSize = NET_MAX_LENGTH;
+
+                sock.ReceiveTimeout = 1000 * 10;
+
+                sock.Connect(enp);
+                IsConnected = true;
+            }
+        }
+
+        /// <summary>
+        /// Disconnects from PlayStation 4
+        /// </summary>
+        public void Disconnect() {
+            SendCMDPacket(CMDS.CMD_CONSOLE_END, 0);
+            sock.Shutdown(SocketShutdown.Both);
+            sock.Close();
+            IsConnected = false;
+        }
+
+        /// <summary>
+        /// Get the current ps4debug version from console
+        /// </summary>
+        public string GetConsoleDebugVersion() {
+            CheckConnected();
+
+            SendCMDPacket(CMDS.CMD_VERSION, 0);
+
+            byte[] ldata = new byte[4];
+            sock.Receive(ldata, 4, SocketFlags.None);
+
+            int length = BitConverter.ToInt32(ldata, 0);
+
+            byte[] data = new byte[length];
+            sock.Receive(data, length, SocketFlags.None);
+
+            return ConvertASCII(data, 0);
+        }
+
+        /// <summary>
+        /// Get current ps4debug version from library
+        /// </summary>
+        public string GetLibraryDebugVersion()
+            => LIBRARY_VERSION;
+
         // General networking functions
         private static IPAddress GetBroadcastAddress(IPAddress address, IPAddress subnetMask) {
             byte[] ipAdressBytes = address.GetAddressBytes();
@@ -188,6 +293,52 @@ namespace libdebug {
 
             return new IPAddress(broadcastAddress);
         }
+
+        private void CheckConnected() {
+            if (!IsConnected) {
+                throw new Exception("libdbg: not connected");
+            }
+        }
+
+        private void CheckDebugging() {
+            if (!IsDebugging) {
+                throw new Exception("libdbg: not debugging");
+            }
+        }
+
+        private void CheckStatus() {
+            CMD_STATUS status = ReceiveStatus();
+            if (status != CMD_STATUS.CMD_SUCCESS) {
+                throw new Exception("libdbg status " + ((uint)status).ToString("X"));
+            }
+        }
+
+        private byte[] ReceiveData(int length) {
+            MemoryStream s = new MemoryStream();
+
+            int left = length;
+            int recv = 0;
+            while (left > 0) {
+                byte[] b = new byte[NET_MAX_LENGTH];
+                recv = sock.Receive(b, NET_MAX_LENGTH, SocketFlags.None);
+                s.Write(b, 0, recv);
+                left -= recv;
+            }
+
+            byte[] data = s.ToArray();
+
+            s.Dispose();
+            GC.Collect();
+
+            return data;
+        }
+
+        private CMD_STATUS ReceiveStatus() {
+            byte[] status = new byte[4];
+            sock.Receive(status, 4, SocketFlags.None);
+            return (CMD_STATUS)BitConverter.ToUInt32(status, 0);
+        }
+
         // Function to send a command packet to the remote FreeBSD based system running the ps4debug payload
         private void SendCMDPacket(CMDS cmd, int length, params object[] fields) {
             // Create a new Command (CMD) Packet object and initialize its members
@@ -266,159 +417,12 @@ namespace libdebug {
                 left -= sent;
             }
         }
-        private byte[] ReceiveData(int length) {
-            MemoryStream s = new MemoryStream();
 
-            int left = length;
-            int recv = 0;
-            while (left > 0) {
-                byte[] b = new byte[NET_MAX_LENGTH];
-                recv = sock.Receive(b, NET_MAX_LENGTH, SocketFlags.None);
-                s.Write(b, 0, recv);
-                left -= recv;
-            }
-
-            byte[] data = s.ToArray();
-
-            s.Dispose();
-            GC.Collect();
-
-            return data;
-        }
-        private CMD_STATUS ReceiveStatus() {
-            byte[] status = new byte[4];
-            sock.Receive(status, 4, SocketFlags.None);
-            return (CMD_STATUS)BitConverter.ToUInt32(status, 0);
-        }
-        private void CheckStatus() {
-            CMD_STATUS status = ReceiveStatus();
-            if (status != CMD_STATUS.CMD_SUCCESS) {
-                throw new Exception("libdbg status " + ((uint)status).ToString("X"));
-            }
-        }
-
-        private void CheckConnected() {
-            if (!IsConnected) {
-                throw new Exception("libdbg: not connected");
-            }
-        }
-        private void CheckDebugging() {
-            if (!IsDebugging) {
-                throw new Exception("libdbg: not debugging");
-            }
-        }
-
-
-
-        /// <summary>
-        /// Initializes PS4DBG class
-        /// </summary>
-        /// <param name="addr">PlayStation 4 address</param>
-        public PS4DBG(IPAddress addr) {
-            enp = new IPEndPoint(addr, PS4DBG_PORT);
-            sock = new Socket(enp.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
-        }
-
-        /// <summary>
-        /// Initializes PS4DBG class
-        /// </summary>
-        /// <param name="ip">PlayStation 4 ip address</param>
-        public PS4DBG(string ip) {
-            IPAddress addr = null;
-            try {
-                addr = IPAddress.Parse(ip);
-            }
-            catch (FormatException ex) {
-                throw ex;
-            }
-
-            enp = new IPEndPoint(addr, PS4DBG_PORT);
-            sock = new Socket(enp.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
-        }
-
-        /// <summary>
-        /// Find the playstation ip
-        /// </summary>
-        public static string FindPlayStation() {
-            UdpClient uc = new UdpClient();
-            IPEndPoint server = new IPEndPoint(IPAddress.Any, 0);
-            uc.EnableBroadcast = true;
-            uc.Client.ReceiveTimeout = 4000;
-
-            byte[] magic = BitConverter.GetBytes(BROADCAST_MAGIC);
-
-            IPAddress addr = null;
-            IPHostEntry host = Dns.GetHostEntry(Dns.GetHostName());
-            foreach (IPAddress ip in host.AddressList) {
-                if (ip.AddressFamily == AddressFamily.InterNetwork) {
-                    addr = ip;
-                }
-            }
-
-            if (addr == null) {
-                throw new Exception("libdbg broadcast error: could not get host ip");
-            }
-
-            uc.Send(magic, magic.Length, new IPEndPoint(GetBroadcastAddress(addr, IPAddress.Parse("255.255.255.0")), BROADCAST_PORT));
-
-            byte[] resp = uc.Receive(ref server);
-            if (BitConverter.ToUInt32(resp, 0) != BROADCAST_MAGIC) {
-                throw new Exception("libdbg broadcast error: wrong magic on udp server");
-            }
-
-            return server.Address.ToString();
-        }
-
-        /// <summary>
-        /// Connects to PlayStation 4
-        /// </summary>
-        public void Connect() {
-            if (!IsConnected) {
-                sock.NoDelay = true;
-                sock.ReceiveBufferSize = NET_MAX_LENGTH;
-                sock.SendBufferSize = NET_MAX_LENGTH;
-
-                sock.ReceiveTimeout = 1000 * 10;
-
-                sock.Connect(enp);
-                IsConnected = true;
-            }
-        }
-
-        /// <summary>
-        /// Disconnects from PlayStation 4
-        /// </summary>
-        public void Disconnect() {
-            SendCMDPacket(CMDS.CMD_CONSOLE_END, 0);
-            sock.Shutdown(SocketShutdown.Both);
-            sock.Close();
-            IsConnected = false;
-        }
-
-        /// <summary>
-        /// Get current ps4debug version from library
-        /// </summary>
-        public string GetLibraryDebugVersion() {
-            return LIBRARY_VERSION;
-        }
-
-        /// <summary>
-        /// Get the current ps4debug version from console
-        /// </summary>
-        public string GetConsoleDebugVersion() {
-            CheckConnected();
-
-            SendCMDPacket(CMDS.CMD_VERSION, 0);
-
-            byte[] ldata = new byte[4];
-            sock.Receive(ldata, 4, SocketFlags.None);
-
-            int length = BitConverter.ToInt32(ldata, 0);
-
-            byte[] data = new byte[length];
-            sock.Receive(data, length, SocketFlags.None);
-
-            return ConvertASCII(data, 0);
+        [StructLayout(LayoutKind.Sequential, Pack = 1)]
+        public struct CMDPacket {
+            public uint magic;
+            public uint cmd;
+            public uint datalen;
         }
     }
 }
