@@ -234,22 +234,34 @@ namespace libdebug {
         /// Connects to PlayStation 4
         /// </summary>
         public void Connect() {
-            if (!IsConnected) {
-                sock.NoDelay = true;
-                sock.ReceiveBufferSize = NET_MAX_LENGTH;
-                sock.SendBufferSize = NET_MAX_LENGTH;
-
-                sock.ReceiveTimeout = 1000 * 10;
-
-                sock.Connect(enp);
-                IsConnected = true;
+            // Before trying to open the connection between our PC and the
+            // PS4 System, we first check if it's already been opened.
+            if (IsConnected) {
+                DebugPrintWarning("Oops, the connection is already open!");
+                return;
             }
+
+            sock.NoDelay = true;
+            sock.ReceiveBufferSize = NET_MAX_LENGTH;
+            sock.SendBufferSize = NET_MAX_LENGTH;
+
+            sock.ReceiveTimeout = 1000 * 10;
+
+            sock.Connect(enp);
+            IsConnected = true;
         }
 
         /// <summary>
         /// Disconnects from PlayStation 4
         /// </summary>
         public void Disconnect() {
+            // Before trying to close the connection we first check if
+            // the connection is currently open
+            if (!IsConnected) {
+                DebugPrintWarning("Oops, the PS4 connection is not active!");
+                return;
+            }
+
             SendCMDPacket(CMDS.CMD_CONSOLE_END, 0);
             sock.Shutdown(SocketShutdown.Both);
             sock.Close();
@@ -278,8 +290,10 @@ namespace libdebug {
         /// <summary>
         /// Get current ps4debug version from library
         /// </summary>
-        public string GetLibraryDebugVersion()
-            => LIBRARY_VERSION;
+        public string GetLibraryDebugVersion() {
+            return LIBRARY_VERSION;
+        }
+
 
         // General networking functions
         private static IPAddress GetBroadcastAddress(IPAddress address, IPAddress subnetMask) {
