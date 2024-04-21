@@ -295,6 +295,7 @@ namespace libdebug {
         }
 
 
+
         // General networking functions
         private static IPAddress GetBroadcastAddress(IPAddress address, IPAddress subnetMask) {
             byte[] ipAdressBytes = address.GetAddressBytes();
@@ -326,6 +327,25 @@ namespace libdebug {
                 throw new Exception("libdbg status " + ((uint)status).ToString("X"));
             }
         }
+        private void SendData(byte[] data, int length) {
+            int left = length;
+            int offset = 0;
+            int sent = 0;
+
+            while (left > 0) {
+                if (left > NET_MAX_LENGTH) {
+                    byte[] bytes = SubArray(data, offset, NET_MAX_LENGTH);
+                    sent = sock.Send(bytes, NET_MAX_LENGTH, SocketFlags.None);
+                }
+                else {
+                    byte[] bytes = SubArray(data, offset, left);
+                    sent = sock.Send(bytes, left, SocketFlags.None);
+                }
+
+                offset += sent;
+                left -= sent;
+            }
+        }
 
         private byte[] ReceiveData(int length) {
             MemoryStream s = new MemoryStream();
@@ -353,7 +373,9 @@ namespace libdebug {
             return (CMD_STATUS)BitConverter.ToUInt32(status, 0);
         }
 
-        // Function to send a command packet to the remote FreeBSD based system running the ps4debug payload
+        /// <summary>
+        /// Function used to build a new CMD Packet before sending it to the PS4 System.
+        /// </summary>
         private void SendCMDPacket(CMDS cmd, int length, params object[] fields) {
             // Create a new Command (CMD) Packet object and initialize its members
             CMDPacket packet = new CMDPacket();
@@ -412,25 +434,6 @@ namespace libdebug {
             if (data != null) SendData(data, length);
         }
 
-        private void SendData(byte[] data, int length) {
-            int left = length;
-            int offset = 0;
-            int sent = 0;
-
-            while (left > 0) {
-                if (left > NET_MAX_LENGTH) {
-                    byte[] bytes = SubArray(data, offset, NET_MAX_LENGTH);
-                    sent = sock.Send(bytes, NET_MAX_LENGTH, SocketFlags.None);
-                }
-                else {
-                    byte[] bytes = SubArray(data, offset, left);
-                    sent = sock.Send(bytes, left, SocketFlags.None);
-                }
-
-                offset += sent;
-                left -= sent;
-            }
-        }
 
         [StructLayout(LayoutKind.Sequential, Pack = 1)]
         public struct CMDPacket {
