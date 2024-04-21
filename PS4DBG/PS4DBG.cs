@@ -188,64 +188,65 @@ namespace libdebug {
 
             return new IPAddress(broadcastAddress);
         }
+        // Function to send a command packet to the remote FreeBSD based system running the ps4debug payload
         private void SendCMDPacket(CMDS cmd, int length, params object[] fields) {
-            CMDPacket packet = new CMDPacket
-            {
-                magic = CMD_PACKET_MAGIC,
-                cmd = (uint) cmd,
-                datalen = (uint) length
-            };
+            // Create a new Command (CMD) Packet object and initialize its members
+            CMDPacket packet = new CMDPacket();
+            packet.magic = CMD_PACKET_MAGIC; // Set the magic number for the packet
+            packet.cmd = (uint)cmd;          // Set the command identifier
+            packet.datalen = (uint)length;   // Set the data length of the packet
 
+            // Create a byte array to hold the packet data
             byte[] data = null;
 
+            // Check if the length of the data is greater than 0
             if (length > 0) {
+                // Create a new memory stream to hold ?
                 MemoryStream rs = new MemoryStream();
+
+                // Iterate through each field object in the fields parameter
                 foreach (object field in fields) {
+                    // Create a new byte array to hold converted filed? or
+                    // the bytes representing the field?
                     byte[] bytes = null;
 
+                    // Check the type of the field variable and obtain an array of bytes from it
                     switch (field) {
-                        case char c:
-                            bytes = BitConverter.GetBytes(c);
+                        case char c: bytes = BitConverter.GetBytes(c); break;
+                        case byte b: bytes = BitConverter.GetBytes(b); break;
+                        case short s: bytes = BitConverter.GetBytes(s); break;
+                        case ushort us: bytes = BitConverter.GetBytes(us); break;
+                        case int i: bytes = BitConverter.GetBytes(i); break;
+                        case uint u: bytes = BitConverter.GetBytes(u); break;
+                        case long l: bytes = BitConverter.GetBytes(l); break;
+                        case ulong ul: bytes = BitConverter.GetBytes(ul); break;
+                        case byte[] ba: bytes = ba; break;
+                        // If the field type is anything else other than the above cases, handle it by printing out the warning
+                        default:
+                            DebugPrintWarning($"field variable is of non-supported type ({field.GetType()})");
+                            // Should we return early?
                             break;
-                        case byte b:
-                            bytes = BitConverter.GetBytes(b);
-                            break;
-                        case short s:
-                            bytes = BitConverter.GetBytes(s);
-                            break;
-                        case ushort us:
-                            bytes = BitConverter.GetBytes(us);
-                            break;
-                        case int i:
-                            bytes = BitConverter.GetBytes(i);
-                            break;
-                        case uint u:
-                            bytes = BitConverter.GetBytes(u);
-                            break;
-                        case long l:
-                            bytes = BitConverter.GetBytes(l);
-                            break;
-                        case ulong ul:
-                            bytes = BitConverter.GetBytes(ul);
-                            break;
-                        case byte[] ba:
-                            bytes = ba;
-                            break;
-                    }
+                    };
 
+                    // Write the bytes representing the field to the memory stream
                     if (bytes != null) rs.Write(bytes, 0, bytes.Length);
                 }
 
+                // Convert the memory stream to a byte array
                 data = rs.ToArray();
+
+                // Perform cleanup for the memory stream
                 rs.Dispose();
             }
 
+            // Send the Command (CMD) Packet header? to the PS4 System
             SendData(GetBytesFromObject(packet), CMD_PACKET_SIZE);
 
-            if (data != null) {
-                SendData(data, length);
-            }
+            // Check if the data byte array is not null, and in case of it not being
+            // null, use it and send it's content to the PS4
+            if (data != null) SendData(data, length);
         }
+
         private void SendData(byte[] data, int length) {
             int left = length;
             int offset = 0;
