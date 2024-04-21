@@ -202,22 +202,35 @@ namespace libdebug {
         /// <summary>
         /// Get a list of threads from the current process
         /// </summary>
-        /// <returns></returns>
+        /// <returns>A list of descriptor values for current threads in process</returns>
         public uint[] GetThreadList() {
+            // Check if the PC and PS4 has an established connection,
+            // and check if we are currently debugging the process?
             CheckConnected();
             CheckDebugging();
 
+            // Send CMD_DEBUG_THREADS PACKET to the PS4Debug Payload Running,
+            // on the remote PS4 system, to get it to send back list of all
+            // current threads in the process?
             SendCMDPacket(CMDS.CMD_DEBUG_THREADS, 0);
+
+            // Check the response status from the PS4 system
             CheckStatus();
 
+            // Receive the number of threads from the PS4 system
             byte[] data = new byte[sizeof(int)];
             sock.Receive(data, sizeof(int), SocketFlags.None);
             int number = BitConverter.ToInt32(data, 0);
-
+            
+            // Receive the thread data from the PS4 system
             byte[] threads = ReceiveData(number * sizeof(uint));
+
+            // Convert the thread data to an array of unsigned integers.
+            // possibly thread descriptors?
             uint[] thrlist = new uint[number];
             for (int i = 0; i < number; i++) {
-                thrlist[i] = BitConverter.ToUInt32(threads, i * sizeof(uint));
+                thrlist[i] = BitConverter.ToUInt32(
+                    threads, i * sizeof(uint));
             }
 
             return thrlist;
