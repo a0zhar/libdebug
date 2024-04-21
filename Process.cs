@@ -1,38 +1,92 @@
 using System.Runtime.InteropServices;
 
 namespace libdebug {
+
+    /// <summary>
+    /// Structure to contain information about a process
+    /// </summary>
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 1)]
     public struct ProcessInfo {
+        /// <summary>
+        /// The Process ID (PID)
+        /// </summary>
         public int pid;
 
+        /// <summary>
+        /// The Process Name
+        /// </summary>
         [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 40)]
         public string name;
 
+        /// <summary>
+        /// The Path of the Process Executable?
+        /// </summary>
         [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 64)]
         public string path;
 
+        /// <summary>
+        /// The Process Title ID?
+        /// </summary>
         [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 16)]
         public string titleid;
 
+        /// <summary>
+        /// The Process Content ID?
+        /// </summary>
         [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 64)]
         public string contentid;
     }
 
+    /// <summary>
+    /// Structure to hold information about a thread related to a Process?
+    /// </summary>
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 1)]
     public struct ThreadInfo {
+        /// <summary>
+        /// The Process ID (PID) of the Process where this thread is running in
+        /// </summary>
         public int pid;
+
+        /// <summary>
+        /// Priority of the thread
+        /// </summary>
         public int priority;
 
+        /// <summary>
+        /// Name of the thread
+        /// </summary>
         [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 32)]
         public string name;
     }
 
+    /// <summary>
+    /// Represents a memory entry within a Process?
+    /// </summary>
     public class MemoryEntry {
-        public ulong end;
-        public string name;
-        public ulong offset;
-        public uint prot;
+        /// <summary>
+        /// Start address of the memory region
+        /// </summary>
         public ulong start;
+
+        /// <summary>
+        /// End address of the memory region
+        /// </summary>
+        public ulong end;
+
+        /// <summary>
+        /// Offset of the memory region
+        /// </summary>
+        public ulong offset;
+
+        /// <summary>
+        /// Protection attributes of the memory region
+        /// </summary>
+        public uint prot;
+
+        /// <summary>
+        /// Name of the memory region
+        /// </summary>
+        public string name;
     }
 
     public class Process {
@@ -49,6 +103,7 @@ namespace libdebug {
             this.name = name;
             this.pid = pid;
         }
+
         public override string ToString() {
             return $"[{pid}] {name}";
         }
@@ -94,9 +149,11 @@ namespace libdebug {
             return null;
         }
     }
+
     public class ProcessMap {
         public MemoryEntry[] entries;
         public int pid;
+
         /// <summary>
         /// Initializes ProcessMap class with memory entries and process ID
         /// </summary>
