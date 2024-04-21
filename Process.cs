@@ -1,3 +1,4 @@
+using System.Linq;
 using System.Runtime.InteropServices;
 
 namespace libdebug {
@@ -7,6 +8,7 @@ namespace libdebug {
     /// </summary>
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 1)]
     public struct ProcessInfo {
+
         /// <summary>
         /// The Process ID (PID)
         /// </summary>
@@ -42,6 +44,7 @@ namespace libdebug {
     /// </summary>
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 1)]
     public struct ThreadInfo {
+
         /// <summary>
         /// The Process ID (PID) of the Process where this thread is running in
         /// </summary>
@@ -110,19 +113,30 @@ namespace libdebug {
     }
 
     public class ProcessList {
+
+        /// <summary>
+        /// An array of [Process-Class] based Processes
+        /// </summary>
         public Process[] processes;
 
         /// <summary>
-        /// Initializes ProcessList class
+        /// Constructor that initializes a new ProcessList class instance
         /// </summary>
         /// <param name="number">Number of processes</param>
         /// <param name="names">Process names</param>
         /// <param name="pids">Process IDs</param>
-        /// <returns></returns>
         public ProcessList(int number, string[] names, int[] pids) {
+            // Create and assign <processes> with a new <Process> array the size of
+            // <number> number of elements
             processes = new Process[number];
+
+            // Iterate through the <processes> array assigning each of it's entries
+            // with a new <Process> instance, whose name is specified by <names[i]>
+            // and whose PID is specified by <pids[i]>.
             for (int i = 0; i < number; i++) {
-                processes[i] = new Process(names[i], pids[i]);
+                processes[i] = new Process(
+                    names[i], pids[i]
+                );
             }
         }
 
@@ -135,14 +149,12 @@ namespace libdebug {
         public Process FindProcess(string name, bool contains = false) {
             foreach (Process p in processes) {
                 if (contains) {
-                    if (p.name.Contains(name)) {
+                    if (p.name.Contains(name))
                         return p;
-                    }
                 }
                 else {
-                    if (p.name == name) {
+                    if (p.name == name)
                         return p;
-                    }
                 }
             }
 
@@ -174,14 +186,12 @@ namespace libdebug {
         public MemoryEntry FindEntry(string name, bool contains = false) {
             foreach (MemoryEntry entry in entries) {
                 if (contains) {
-                    if (entry.name.Contains(name)) {
+                    if (entry.name.Contains(name))
                         return entry;
-                    }
                 }
                 else {
-                    if (entry.name == name) {
+                    if (entry.name == name)
                         return entry;
-                    }
                 }
             }
 
