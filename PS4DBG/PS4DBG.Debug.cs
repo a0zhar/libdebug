@@ -4,10 +4,8 @@ using System.Net.Sockets;
 using System.Runtime.InteropServices;
 using System.Threading;
 
-namespace libdebug
-{
-    public partial class PS4DBG
-    {
+namespace libdebug {
+    public partial class PS4DBG {
         //debug
         // packet sizes
         //send size
@@ -28,8 +26,7 @@ namespace libdebug
         private const int DEBUG_DBGREGS_SIZE = 0x80;
 
         [StructLayout(LayoutKind.Sequential, Pack = 1)]
-        public struct DebuggerInterruptPacket
-        {
+        public struct DebuggerInterruptPacket {
             public uint lwpid;
             public uint status;
             [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 40)]
@@ -48,8 +45,7 @@ namespace libdebug
         /// <param name="fpregs">Floating point registers</param>
         /// <param name="dbregs">Debug registers</param>
         public delegate void DebuggerInterruptCallback(uint lwpid, uint status, string tdname, regs regs, fpregs fpregs, dbregs dbregs);
-        private void DebuggerThread(object obj)
-        {
+        private void DebuggerThread(object obj) {
             DebuggerInterruptCallback callback = (DebuggerInterruptCallback)obj;
 
             IPAddress ip = IPAddress.Parse("0.0.0.0");
@@ -67,14 +63,11 @@ namespace libdebug
             cl.NoDelay = true;
             cl.Blocking = false;
 
-            while (IsDebugging)
-            {
-                if (cl.Available == DEBUG_INTERRUPT_SIZE)
-                {
+            while (IsDebugging) {
+                if (cl.Available == DEBUG_INTERRUPT_SIZE) {
                     byte[] data = new byte[DEBUG_INTERRUPT_SIZE];
                     int bytes = cl.Receive(data, DEBUG_INTERRUPT_SIZE, SocketFlags.None);
-                    if (bytes == DEBUG_INTERRUPT_SIZE)
-                    {
+                    if (bytes == DEBUG_INTERRUPT_SIZE) {
                         DebuggerInterruptPacket packet = (DebuggerInterruptPacket)GetObjectFromBytes(data, typeof(DebuggerInterruptPacket));
                         callback(packet.lwpid, packet.status, packet.tdname, packet.reg64, packet.savefpu, packet.dbreg64);
                     }
@@ -91,23 +84,20 @@ namespace libdebug
         /// <param name="pid">Process ID</param>
         /// <param name="callback">DebuggerInterruptCallback implementation</param>
         /// <returns></returns>
-        public void AttachDebugger(int pid, DebuggerInterruptCallback callback)
-        {
+        public void AttachDebugger(int pid, DebuggerInterruptCallback callback) {
             CheckConnected();
 
-            if (IsDebugging || debugThread != null)
-            {
+            if (IsDebugging || debugThread != null) {
                 throw new Exception("libdbg: debugger already running?");
             }
 
             IsDebugging = false;
 
-            debugThread = new Thread(DebuggerThread) {IsBackground = true};
+            debugThread = new Thread(DebuggerThread) { IsBackground = true };
             debugThread.Start(callback);
 
             // wait until server is started
-            while (!IsDebugging)
-            {
+            while (!IsDebugging) {
                 Thread.Sleep(100);
             }
 
@@ -119,15 +109,13 @@ namespace libdebug
         /// Detach the debugger
         /// </summary>
         /// <returns></returns>
-        public void DetachDebugger()
-        {
+        public void DetachDebugger() {
             CheckConnected();
 
             SendCMDPacket(CMDS.CMD_DEBUG_DETACH, 0);
             CheckStatus();
 
-            if (IsDebugging && debugThread != null)
-            {
+            if (IsDebugging && debugThread != null) {
                 IsDebugging = false;
 
                 debugThread.Join();
@@ -139,8 +127,7 @@ namespace libdebug
         /// Stop the current process
         /// </summary>
         /// <returns></returns>
-        public void ProcessStop()
-        {
+        public void ProcessStop() {
             CheckConnected();
             CheckDebugging();
 
@@ -152,8 +139,7 @@ namespace libdebug
         /// Kill the current process, it will detach before doing so
         /// </summary>
         /// <returns></returns>
-        public void ProcessKill()
-        {
+        public void ProcessKill() {
             CheckConnected();
             CheckDebugging();
 
@@ -165,8 +151,7 @@ namespace libdebug
         /// Resume the current process
         /// </summary>
         /// <returns></returns>
-        public void ProcessResume()
-        {
+        public void ProcessResume() {
             CheckConnected();
             CheckDebugging();
 
@@ -181,13 +166,11 @@ namespace libdebug
         /// <param name="enabled">Enabled</param>
         /// <param name="address">Address</param>
         /// <returns></returns>
-        public void ChangeBreakpoint(int index, bool enabled, ulong address)
-        {
+        public void ChangeBreakpoint(int index, bool enabled, ulong address) {
             CheckConnected();
             CheckDebugging();
 
-            if (index >= MAX_BREAKPOINTS)
-            {
+            if (index >= MAX_BREAKPOINTS) {
                 throw new Exception("libdbg: breakpoint index out of range");
             }
 
@@ -204,13 +187,11 @@ namespace libdebug
         /// <param name="breaktype">Break type</param>
         /// <param name="address">Address</param>
         /// <returns></returns>
-        public void ChangeWatchpoint(int index, bool enabled, WATCHPT_LENGTH length, WATCHPT_BREAKTYPE breaktype, ulong address)
-        {
+        public void ChangeWatchpoint(int index, bool enabled, WATCHPT_LENGTH length, WATCHPT_BREAKTYPE breaktype, ulong address) {
             CheckConnected();
             CheckDebugging();
 
-            if (index >= MAX_WATCHPOINTS)
-            {
+            if (index >= MAX_WATCHPOINTS) {
                 throw new Exception("libdbg: watchpoint index out of range");
             }
 
@@ -222,8 +203,7 @@ namespace libdebug
         /// Get a list of threads from the current process
         /// </summary>
         /// <returns></returns>
-        public uint[] GetThreadList()
-        {
+        public uint[] GetThreadList() {
             CheckConnected();
             CheckDebugging();
 
@@ -236,8 +216,7 @@ namespace libdebug
 
             byte[] threads = ReceiveData(number * sizeof(uint));
             uint[] thrlist = new uint[number];
-            for (int i = 0; i < number; i++)
-            {
+            for (int i = 0; i < number; i++) {
                 thrlist[i] = BitConverter.ToUInt32(threads, i * sizeof(uint));
             }
 
@@ -249,8 +228,7 @@ namespace libdebug
         /// </summary>
         /// <returns></returns>
         /// <param name="lwpid">Thread identifier</param>
-        public ThreadInfo GetThreadInfo(uint lwpid)
-        {
+        public ThreadInfo GetThreadInfo(uint lwpid) {
             CheckConnected();
             CheckDebugging();
 
@@ -265,8 +243,7 @@ namespace libdebug
         /// </summary>
         /// <param name="lwpid">Thread id</param>
         /// <returns></returns>
-        public void StopThread(uint lwpid)
-        {
+        public void StopThread(uint lwpid) {
             CheckConnected();
             CheckDebugging();
 
@@ -279,8 +256,7 @@ namespace libdebug
         /// </summary>
         /// <param name="lwpid">Thread id</param>
         /// <returns></returns>
-        public void ResumeThread(uint lwpid)
-        {
+        public void ResumeThread(uint lwpid) {
             CheckConnected();
             CheckDebugging();
 
@@ -293,8 +269,7 @@ namespace libdebug
         /// </summary>
         /// <param name="lwpid">Thread id</param>
         /// <returns></returns>
-        public regs GetRegisters(uint lwpid)
-        {
+        public regs GetRegisters(uint lwpid) {
             CheckConnected();
             CheckDebugging();
 
@@ -310,8 +285,7 @@ namespace libdebug
         /// <param name="lwpid">Thread id</param>
         /// <param name="regs">Register data</param>
         /// <returns></returns>
-        public void SetRegisters(uint lwpid, regs regs)
-        {
+        public void SetRegisters(uint lwpid, regs regs) {
             CheckConnected();
             CheckDebugging();
 
@@ -326,8 +300,7 @@ namespace libdebug
         /// </summary>
         /// <param name="lwpid">Thread id</param>
         /// <returns></returns>
-        public fpregs GetFloatRegisters(uint lwpid)
-        {
+        public fpregs GetFloatRegisters(uint lwpid) {
             CheckConnected();
             CheckDebugging();
 
@@ -343,8 +316,7 @@ namespace libdebug
         /// <param name="lwpid">Thread id</param>
         /// <param name="fpregs">Floating point register data</param>
         /// <returns></returns>
-        public void SetFloatRegisters(uint lwpid, fpregs fpregs)
-        {
+        public void SetFloatRegisters(uint lwpid, fpregs fpregs) {
             CheckConnected();
             CheckDebugging();
 
@@ -359,8 +331,7 @@ namespace libdebug
         /// </summary>
         /// <param name="lwpid">Thread id</param>
         /// <returns></returns>
-        public dbregs GetDebugRegisters(uint lwpid)
-        {
+        public dbregs GetDebugRegisters(uint lwpid) {
             CheckConnected();
             CheckDebugging();
 
@@ -376,8 +347,7 @@ namespace libdebug
         /// <param name="lwpid">Thread id</param>
         /// <param name="dbregs">debug register data</param>
         /// <returns></returns>
-        public void SetDebugRegisters(uint lwpid, dbregs dbregs)
-        {
+        public void SetDebugRegisters(uint lwpid, dbregs dbregs) {
             CheckConnected();
             CheckDebugging();
 
@@ -390,8 +360,7 @@ namespace libdebug
         /// <summary>
         /// Executes a single instruction
         /// </summary>
-        public void SingleStep()
-        {
+        public void SingleStep() {
             CheckConnected();
             CheckDebugging();
 
