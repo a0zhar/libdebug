@@ -1,6 +1,40 @@
 using System.Runtime.InteropServices;
 
 namespace libdebug {
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 1)]
+    public struct ProcessInfo {
+        public int pid;
+
+        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 40)]
+        public string name;
+
+        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 64)]
+        public string path;
+
+        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 16)]
+        public string titleid;
+
+        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 64)]
+        public string contentid;
+    }
+
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 1)]
+    public struct ThreadInfo {
+        public int pid;
+        public int priority;
+
+        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 32)]
+        public string name;
+    }
+
+    public class MemoryEntry {
+        public ulong end;
+        public string name;
+        public ulong offset;
+        public uint prot;
+        public ulong start;
+    }
+
     public class Process {
         public string name;
         public int pid;
@@ -60,19 +94,9 @@ namespace libdebug {
             return null;
         }
     }
-
-    public class MemoryEntry {
-        public string name;
-        public ulong start;
-        public ulong end;
-        public ulong offset;
-        public uint prot;
-    }
-
     public class ProcessMap {
-        public int pid;
         public MemoryEntry[] entries;
-
+        public int pid;
         /// <summary>
         /// Initializes ProcessMap class with memory entries and process ID
         /// </summary>
@@ -121,31 +145,5 @@ namespace libdebug {
 
             return null;
         }
-    }
-
-    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 1)]
-    public struct ProcessInfo {
-        public int pid;
-
-        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 40)]
-        public string name;
-
-        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 64)]
-        public string path;
-
-        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 16)]
-        public string titleid;
-
-        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 64)]
-        public string contentid;
-    }
-
-    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 1)]
-    public struct ThreadInfo {
-        public int pid;
-        public int priority;
-
-        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 32)]
-        public string name;
     }
 }
