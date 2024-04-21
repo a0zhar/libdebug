@@ -169,12 +169,28 @@ namespace libdebug {
         public void ChangeBreakpoint(int index, bool enabled, ulong address) {
             CheckConnected();
             CheckDebugging();
-
+            
+            // Check if the breakpoint index is out of range, meaning it's either larger
+            // or equal to maximum allowed number of breakpoints, then let the user know
+            // about it by throwing a new exception
             if (index >= MAX_BREAKPOINTS) {
-                throw new Exception("libdbg: breakpoint index out of range");
+                throw new Exception(
+                    $"libdebug: the Break Point index ({index}) is out of range!\n"+
+                    $"Maximum allowed index is {MAX_BREAKPOINTS}!"
+                );
             }
 
-            SendCMDPacket(CMDS.CMD_DEBUG_BREAKPT, CMD_DEBUG_BREAKPT_PACKET_SIZE, index, Convert.ToInt32(enabled), address);
+            // Send a new command packet to the PS4 system which tells the debugger to
+            // change a certain breakpoint set for the process
+            SendCMDPacket(
+                CMDS.CMD_DEBUG_BREAKPT, 
+                CMD_DEBUG_BREAKPT_PACKET_SIZE, 
+                index, 
+                Convert.ToInt32(enabled), 
+                address
+            );
+
+            // Then we check the response/status told by the PS4
             CheckStatus();
         }
 
@@ -191,11 +207,28 @@ namespace libdebug {
             CheckConnected();
             CheckDebugging();
 
+            // Check if the watchpoint index is out of range, meaning it's either larger
+            // or equal to maximum allowed number of breakpoints, then let the user know
+            // about it by throwing a new exception
             if (index >= MAX_WATCHPOINTS) {
-                throw new Exception("libdbg: watchpoint index out of range");
+                throw new Exception(
+                    $"libdebug: the Watch Point index ({index}) is out of range!\n" +
+                    $"Maximum allowed index is {MAX_WATCHPOINTS}!"
+                );
             }
 
-            SendCMDPacket(CMDS.CMD_DEBUG_WATCHPT, CMD_DEBUG_WATCHPT_PACKET_SIZE, index, Convert.ToInt32(enabled), (uint)length, (uint)breaktype, address);
+            // Send a new command packet to the PS4 system which tells the debugger to
+            // change a certain watchpoint set for the process
+            SendCMDPacket(
+                CMDS.CMD_DEBUG_WATCHPT, 
+                CMD_DEBUG_WATCHPT_PACKET_SIZE, 
+                index, Convert.ToInt32(enabled), 
+                (uint)length, 
+                (uint)breaktype, 
+                address
+            );
+
+            // Then we check the response/status told by the PS4
             CheckStatus();
         }
 
@@ -221,7 +254,7 @@ namespace libdebug {
             byte[] data = new byte[sizeof(int)];
             sock.Receive(data, sizeof(int), SocketFlags.None);
             int number = BitConverter.ToInt32(data, 0);
-            
+
             // Receive the thread data from the PS4 system
             byte[] threads = ReceiveData(number * sizeof(uint));
 
