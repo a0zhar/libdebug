@@ -1,0 +1,67 @@
+﻿namespace libdebug {
+
+    /// <summary>
+    /// Different types of values during memory scans
+    /// </summary>
+    public enum ScanValueType : byte {
+        /// <summary>
+        /// Unsigned 8-bit integer value
+        /// </summary>
+        valTypeUInt8 = 0,
+
+        /// <summary>
+        /// Signed 8-bit integer value
+        /// </summary>
+        valTypeInt8,
+
+        /// <summary>
+        /// Unsigned 16-bit integer value
+        /// </summary>
+        valTypeUInt16,
+
+        /// <summary>
+        /// Signed 16-bit integer value
+        /// </summary>
+        valTypeInt16,
+
+        /// <summary>
+        /// Unsigned 32-bit integer value
+        /// </summary>
+        valTypeUInt32,
+
+        /// <summary>
+        /// Signed 32-bit integer value
+        /// </summary>
+        valTypeInt32,
+
+        /// <summary>
+        /// Unsigned 64-bit integer value
+        /// </summary>
+        valTypeUInt64,
+
+        /// <summary>
+        /// Signed 64-bit integer value
+        /// </summary>
+        valTypeInt64,
+
+        /// <summary>
+        /// Floating point value
+        /// </summary>
+        valTypeFloat,
+
+        /// <summary>
+        /// Double precision floating point value
+        /// </summary>
+        valTypeDouble,
+
+        /// <summary>
+        /// Array of bytes value
+        /// </summary>
+        valTypeArrBytes,
+
+        /// <summary>
+        /// String value
+        /// </summary>
+        valTypeString
+    };
+}
