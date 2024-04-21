@@ -5,11 +5,14 @@ using System.Runtime.InteropServices;
 using System.Threading;
 
 namespace libdebug {
+
     public partial class PS4DBG {
+
         //debug
         // packet sizes
         //send size
         private const int CMD_DEBUG_ATTACH_PACKET_SIZE = 4;
+
         private const int CMD_DEBUG_BREAKPT_PACKET_SIZE = 16;
         private const int CMD_DEBUG_WATCHPT_PACKET_SIZE = 24;
         private const int CMD_DEBUG_STOPTHR_PACKET_SIZE = 4;
@@ -18,8 +21,10 @@ namespace libdebug {
         private const int CMD_DEBUG_SETREGS_PACKET_SIZE = 8;
         private const int CMD_DEBUG_STOPGO_PACKET_SIZE = 4;
         private const int CMD_DEBUG_THRINFO_PACKET_SIZE = 4;
+
         //receive size
         private const int DEBUG_INTERRUPT_SIZE = 0x4A0;
+
         private const int DEBUG_THRINFO_SIZE = 40;
         private const int DEBUG_REGS_SIZE = 0xB0;
         private const int DEBUG_FPREGS_SIZE = 0x340;
@@ -29,12 +34,15 @@ namespace libdebug {
         public struct DebuggerInterruptPacket {
             public uint lwpid;
             public uint status;
+
             [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 40)]
             public string tdname;
+
             public regs reg64;
             public fpregs savefpu;
             public dbregs dbreg64;
         }
+
         /// <summary>
         /// Debugger interrupt callback
         /// </summary>
@@ -45,6 +53,7 @@ namespace libdebug {
         /// <param name="fpregs">Floating point registers</param>
         /// <param name="dbregs">Debug registers</param>
         public delegate void DebuggerInterruptCallback(uint lwpid, uint status, string tdname, regs regs, fpregs fpregs, dbregs dbregs);
+
         private void DebuggerThread(object obj) {
             DebuggerInterruptCallback callback = (DebuggerInterruptCallback)obj;
 
@@ -78,6 +87,7 @@ namespace libdebug {
 
             server.Close();
         }
+
         /// <summary>
         /// Attach the debugger
         /// </summary>
@@ -106,14 +116,15 @@ namespace libdebug {
         }
 
         /// <summary>
-        /// Detach the debugger
+        /// Function used to cause PS4Debug Payload running on the connected PS4 System 
+        /// to Detach the debugger from the Process
         /// </summary>
-        /// <returns></returns>
         public void DetachDebugger() {
             CheckConnected();
 
             SendCMDPacket(CMDS.CMD_DEBUG_DETACH, 0);
             CheckStatus();
+
 
             if (IsDebugging && debugThread != null) {
                 IsDebugging = false;
@@ -124,38 +135,49 @@ namespace libdebug {
         }
 
         /// <summary>
-        /// Stop the current process
+        /// Function used to cause PS4Debug Payload running on the connected PS4 System 
+        /// to cause the Process Execution to Stop (Pausing it)
         /// </summary>
-        /// <returns></returns>
         public void ProcessStop() {
             CheckConnected();
             CheckDebugging();
 
+            // Build the CMD Packet/Command Packet, and send it to the Connected
+            // Remote PS4 System's running PS4Debug Payload
             SendCMDPacket(CMDS.CMD_DEBUG_STOPGO, CMD_DEBUG_STOPGO_PACKET_SIZE, 1);
+
             CheckStatus();
         }
 
         /// <summary>
-        /// Kill the current process, it will detach before doing so
+        /// Function used to cause PS4Debug Payload running on the connected PS4 System 
+        /// to IF ATTACHED! detach the debugger from the Process then kill the Process 
         /// </summary>
-        /// <returns></returns>
         public void ProcessKill() {
             CheckConnected();
             CheckDebugging();
 
+            // Build the CMD Packet/Command Packet, and send it to the Connected
+            // Remote PS4 System's running PS4Debug Payload
             SendCMDPacket(CMDS.CMD_DEBUG_STOPGO, CMD_DEBUG_STOPGO_PACKET_SIZE, 2);
+
+            // Check the status/response after sending the command
             CheckStatus();
         }
 
         /// <summary>
-        /// Resume the current process
+        /// Function used to cause PS4Debug Payload running on the connected PS4 System 
+        /// to IF ATTACHED! detach the debugger from the Process then kill the Process 
         /// </summary>
-        /// <returns></returns>
         public void ProcessResume() {
             CheckConnected();
             CheckDebugging();
 
+            // Build the CMD Packet/Command Packet, and send it to the Connected
+            // Remote PS4 System's running PS4Debug Payload
             SendCMDPacket(CMDS.CMD_DEBUG_STOPGO, CMD_DEBUG_STOPGO_PACKET_SIZE, 0);
+
+            // Then we check the status of the sent packet?
             CheckStatus();
         }
 
@@ -169,13 +191,13 @@ namespace libdebug {
         public void ChangeBreakpoint(int index, bool enabled, ulong address) {
             CheckConnected();
             CheckDebugging();
-            
+
             // Check if the breakpoint index is out of range, meaning it's either larger
             // or equal to maximum allowed number of breakpoints, then let the user know
             // about it by throwing a new exception
             if (index >= MAX_BREAKPOINTS) {
                 throw new Exception(
-                    $"libdebug: the Break Point index ({index}) is out of range!\n"+
+                    $"libdebug: the Break Point index ({index}) is out of range!\n" +
                     $"Maximum allowed index is {MAX_BREAKPOINTS}!"
                 );
             }
@@ -183,10 +205,10 @@ namespace libdebug {
             // Send a new command packet to the PS4 system which tells the debugger to
             // change a certain breakpoint set for the process
             SendCMDPacket(
-                CMDS.CMD_DEBUG_BREAKPT, 
-                CMD_DEBUG_BREAKPT_PACKET_SIZE, 
-                index, 
-                Convert.ToInt32(enabled), 
+                CMDS.CMD_DEBUG_BREAKPT,
+                CMD_DEBUG_BREAKPT_PACKET_SIZE,
+                index,
+                Convert.ToInt32(enabled),
                 address
             );
 
@@ -220,11 +242,11 @@ namespace libdebug {
             // Send a new command packet to the PS4 system which tells the debugger to
             // change a certain watchpoint set for the process
             SendCMDPacket(
-                CMDS.CMD_DEBUG_WATCHPT, 
-                CMD_DEBUG_WATCHPT_PACKET_SIZE, 
-                index, Convert.ToInt32(enabled), 
-                (uint)length, 
-                (uint)breaktype, 
+                CMDS.CMD_DEBUG_WATCHPT,
+                CMD_DEBUG_WATCHPT_PACKET_SIZE,
+                index, Convert.ToInt32(enabled),
+                (uint)length,
+                (uint)breaktype,
                 address
             );
 
