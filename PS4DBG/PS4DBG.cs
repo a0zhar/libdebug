@@ -39,13 +39,13 @@ namespace libdebug {
 
         // some global values
         private const string LIBRARY_VERSION = "1.2";
-
         private const int NET_MAX_LENGTH = 8192;
         private const int PS4DBG_DEBUG_PORT = 755;
         private const int PS4DBG_PORT = 744;
         private Thread debugThread = null;
         private IPEndPoint enp = null;
         private Socket sock = null;
+
         /// <summary>
         /// Initializes PS4DBG class
         /// </summary>
@@ -61,9 +61,7 @@ namespace libdebug {
         /// <param name="ip">PlayStation 4 ip address</param>
         public PS4DBG(string ip) {
             IPAddress addr = null;
-            try {
-                addr = IPAddress.Parse(ip);
-            }
+            try { addr = IPAddress.Parse(ip); }
             catch (FormatException ex) {
                 throw ex;
             }
@@ -72,88 +70,15 @@ namespace libdebug {
             sock = new Socket(enp.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
         }
 
-        public enum CMD_STATUS : uint {
-            CMD_SUCCESS = 0x80000000,
-            CMD_ERROR = 0xF0000001,
-            CMD_TOO_MUCH_DATA = 0xF0000002,
-            CMD_DATA_NULL = 0xF0000003,
-            CMD_ALREADY_DEBUG = 0xF0000004,
-            CMD_INVALID_INDEX = 0xF0000005
-        };
 
-        public enum CMDS : uint {
-            CMD_VERSION = 0xBD000001,
+        public bool IsConnected { 
+            get; private set; 
+        } = false;
 
-            CMD_PROC_LIST = 0xBDAA0001,
-            CMD_PROC_READ = 0xBDAA0002,
-            CMD_PROC_WRITE = 0xBDAA0003,
-            CMD_PROC_MAPS = 0xBDAA0004,
-            CMD_PROC_INTALL = 0xBDAA0005,
-            CMD_PROC_CALL = 0xBDAA0006,
-            CMD_PROC_ELF = 0xBDAA0007,
-            CMD_PROC_PROTECT = 0xBDAA0008,
-            CMD_PROC_SCAN = 0xBDAA0009,
-            CMD_PROC_INFO = 0xBDAA000A,
-            CMD_PROC_ALLOC = 0xBDAA000B,
-            CMD_PROC_FREE = 0xBDAA000C,
-
-            CMD_DEBUG_ATTACH = 0xBDBB0001,
-            CMD_DEBUG_DETACH = 0xBDBB0002,
-            CMD_DEBUG_BREAKPT = 0xBDBB0003,
-            CMD_DEBUG_WATCHPT = 0xBDBB0004,
-            CMD_DEBUG_THREADS = 0xBDBB0005,
-            CMD_DEBUG_STOPTHR = 0xBDBB0006,
-            CMD_DEBUG_RESUMETHR = 0xBDBB0007,
-            CMD_DEBUG_GETREGS = 0xBDBB0008,
-            CMD_DEBUG_SETREGS = 0xBDBB0009,
-            CMD_DEBUG_GETFPREGS = 0xBDBB000A,
-            CMD_DEBUG_SETFPREGS = 0xBDBB000B,
-            CMD_DEBUG_GETDBGREGS = 0xBDBB000C,
-            CMD_DEBUG_SETDBGREGS = 0xBDBB000D,
-            CMD_DEBUG_STOPGO = 0xBDBB0010,
-            CMD_DEBUG_THRINFO = 0xBDBB0011,
-            CMD_DEBUG_SINGLESTEP = 0xBDBB0012,
-
-            CMD_KERN_BASE = 0xBDCC0001,
-            CMD_KERN_READ = 0xBDCC0002,
-            CMD_KERN_WRITE = 0xBDCC0003,
-
-            CMD_CONSOLE_REBOOT = 0xBDDD0001,
-            CMD_CONSOLE_END = 0xBDDD0002,
-            CMD_CONSOLE_PRINT = 0xBDDD0003,
-            CMD_CONSOLE_NOTIFY = 0xBDDD0004,
-            CMD_CONSOLE_INFO = 0xBDDD0005,
-        };
-
-        // enums
-        public enum VM_PROTECTIONS : uint {
-            VM_PROT_NONE = 0x00,
-            VM_PROT_READ = 0x01,
-            VM_PROT_WRITE = 0x02,
-            VM_PROT_EXECUTE = 0x04,
-            VM_PROT_DEFAULT = VM_PROT_READ | VM_PROT_WRITE,
-            VM_PROT_ALL = VM_PROT_READ | VM_PROT_WRITE | VM_PROT_EXECUTE,
-            VM_PROT_NO_CHANGE = 0x08,
-            VM_PROT_COPY = 0x10,
-            VM_PROT_WANTS_COPY = 0x10
-        };
-
-        public enum WATCHPT_BREAKTYPE : uint {
-            DBREG_DR7_EXEC = 0x00,	/* break on execute       */
-            DBREG_DR7_WRONLY = 0x01,	/* break on write         */
-            DBREG_DR7_RDWR = 0x03,	/* break on read or write */
-        };
-
-        public enum WATCHPT_LENGTH : uint {
-            DBREG_DR7_LEN_1 = 0x00,	/* 1 byte length */
-            DBREG_DR7_LEN_2 = 0x01,
-            DBREG_DR7_LEN_4 = 0x03,
-            DBREG_DR7_LEN_8 = 0x02,
-        };
-
-        public bool IsConnected { get; private set; } = false;
-
-        public bool IsDebugging { get; private set; } = false;
+        public bool IsDebugging { 
+            get; private set; 
+        } = false;
+        
         // General helper functions, make code cleaner
         public static string ConvertASCII(byte[] data, int offset) {
             int length = Array.IndexOf<byte>(data, 0, offset) - offset;
@@ -244,7 +169,6 @@ namespace libdebug {
             sock.NoDelay = true;
             sock.ReceiveBufferSize = NET_MAX_LENGTH;
             sock.SendBufferSize = NET_MAX_LENGTH;
-
             sock.ReceiveTimeout = 1000 * 10;
 
             sock.Connect(enp);
@@ -273,8 +197,8 @@ namespace libdebug {
         /// </summary>
         public string GetConsoleDebugVersion() {
             CheckConnected();
-
             SendCMDPacket(CMDS.CMD_VERSION, 0);
+
 
             byte[] ldata = new byte[4];
             sock.Receive(ldata, 4, SocketFlags.None);
@@ -290,15 +214,13 @@ namespace libdebug {
         /// <summary>
         /// Get current ps4debug version from library
         /// </summary>
-        public string GetLibraryDebugVersion() {
-            return LIBRARY_VERSION;
-        }
+        public string GetLibraryDebugVersion() => LIBRARY_VERSION;
 
 
 
         // General networking functions
         private static IPAddress GetBroadcastAddress(IPAddress address, IPAddress subnetMask) {
-            byte[] ipAdressBytes = address.GetAddressBytes();
+            byte[] ipAdressBytes   = address.GetAddressBytes();
             byte[] subnetMaskBytes = subnetMask.GetAddressBytes();
 
             byte[] broadcastAddress = new byte[ipAdressBytes.Length];
@@ -308,20 +230,6 @@ namespace libdebug {
 
             return new IPAddress(broadcastAddress);
         }
-
-        /// <summary>
-        /// An alternative to the CheckConnected() function, this one can
-        /// be used in if-statements.
-        /// </summary>
-        /// <returns>True or False depending on [IsConnected] </returns>
-        private bool CheckIsConnected() => IsConnected;
-        
-        /// <summary>
-        /// An alternative to the CheckDebugging() function, this one can
-        /// be used in if-statements.
-        /// </summary>
-        /// <returns>True or False depending on [IsDebugging] </returns>
-        private bool CheckIsDebugging() => IsDebugging;
 
 
         private void CheckConnected() {
@@ -339,7 +247,10 @@ namespace libdebug {
         private void CheckStatus() {
             CMD_STATUS status = ReceiveStatus();
             if (status != CMD_STATUS.CMD_SUCCESS) {
-                throw new Exception("libdbg status " + ((uint)status).ToString("X"));
+                throw new Exception(
+                    $"libdebug: Exception in CheckStatus()!\n"+
+                    $"Status ({(uint)status:X})"
+                );
             }
         }
 
@@ -449,7 +360,40 @@ namespace libdebug {
             // null, use it and send it's content to the PS4
             if (data != null) SendData(data, length);
         }
-
+        private void DebuggerThread(object obj) {
+            PS4DBG.DebuggerInterruptCallback debuggerInterruptCallback = (PS4DBG.DebuggerInterruptCallback)obj;
+            IPAddress ipaddress = IPAddress.Parse("0.0.0.0");
+            IPEndPoint ipendPoint = new IPEndPoint(ipaddress, 755);
+            Socket socket = new Socket(ipaddress.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
+            socket.Bind(ipendPoint);
+            socket.Listen(0);
+            this.IsDebugging = true;
+            Socket socket2 = socket.Accept();
+            socket2.NoDelay = true;
+            socket2.Blocking = false;
+            while (this.IsDebugging) {
+                if (socket2.Available == 1184) {
+                    byte[] array = new byte[1184];
+                    if (socket2.Receive(array, 1184, SocketFlags.None) == 1184) {
+                        DebuggerInterruptPacket debuggerInterruptPacket;
+                        debuggerInterruptPacket = (DebuggerInterruptPacket)GetObjectFromBytes(
+                            array, typeof(DebuggerInterruptPacket)
+                        );
+                        
+                        debuggerInterruptCallback(
+                            debuggerInterruptPacket.lwpid,
+                            debuggerInterruptPacket.status,
+                            debuggerInterruptPacket.tdname,
+                            debuggerInterruptPacket.reg64,
+                            debuggerInterruptPacket.savefpu,
+                            debuggerInterruptPacket.dbreg64
+                        );
+                    }
+                }
+                Thread.Sleep(100);
+            }
+            socket.Close();
+        }
 
         [StructLayout(LayoutKind.Sequential, Pack = 1)]
         public struct CMDPacket {
