@@ -416,7 +416,7 @@ namespace libdebug {
                     // Check the type of the field variable and obtain an array of bytes from it
                     switch (field) {
                         case char c: bytes = BitConverter.GetBytes(c); break;
-                        case byte b: bytes = BitConverter.GetBytes(b); break;
+                        case byte b: bytes = new byte[] { b }; break;
                         case short s: bytes = BitConverter.GetBytes(s); break;
                         case ushort us: bytes = BitConverter.GetBytes(us); break;
                         case int i: bytes = BitConverter.GetBytes(i); break;
