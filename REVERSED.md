@@ -58,3 +58,37 @@ public static string FindPlayStation() {
     return result_ip;
 }
 ```
+
+### GetProcessList Function
+```cs
+public ProcessList GetProcessList() {
+    CheckConnected();
+    SendCMDPacket(CMDS.CMD_PROC_LIST, 0, new object[0]);
+    CheckStatus("");
+
+    // Receive the Process List Count
+    byte[] array = new byte[4];
+    sock.Receive(array, 4, SocketFlags.None);
+    int number = BitConverter.ToInt32(array, 0);
+
+    // Receive the Process List Data
+    byte[] data = ReceiveData(PROC_LIST_ENTRY_SIZE*number);
+
+    // Create an array for the Process IDs, and an array for the
+    // Process names, present in the received process list
+    string[] names = new string[number];
+    int[] pids = new int[number];
+
+    // Current offset in the Process List
+    int proc_list_offset;
+
+    // Parse the Process list data (Process Names and Process IDs)
+    for (int i = 0; i < number; i++) {
+        proc_list_offset = PROC_LIST_ENTRY_SIZE * i;
+        names[i] = ConvertASCII(data, proc_list_offset);
+        pids[i] = BitConverter.ToInt32(data, proc_list_offset + 32);
+    }
+
+    return new ProcessList(number, names, pids);
+}
+```
