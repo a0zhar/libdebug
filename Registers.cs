@@ -1,10 +1,10 @@
-
 using System.Runtime.InteropServices;
+
 
 /// <summary>
 /// Structure representing the CPU registers
 /// </summary>
-[StructLayout(LayoutKindSequential, Pack = 1)]
+[StructLayout(LayoutKind.Sequential, Pack = 1)]
 public struct regs {
     /// <summary>
     /// General purpose register R15
@@ -115,7 +115,7 @@ public struct regs {
 /// <summary>
 /// Structure representing the floating-point environment and state
 /// </summary>
-[StructLayout(LayoutKindSequential)]
+[StructLayout(LayoutKind.Sequential)]
 public struct envxmm {
     /// <summary>
     /// Control word
@@ -158,12 +158,12 @@ public struct envxmm {
 /// <summary>
 /// Structure representing the floating-point accumulator
 /// </summary>
-[StructLayout(LayoutKindSequential)]
+[StructLayout(LayoutKind.Sequential)]
 public struct acc {
     /// <summary>
     /// Floating-point bytes
     /// </summary>
-    [MarshalAs(UnmanagedTypeByValArray, SizeConst = 10)]
+    [MarshalAs(UnmanagedType.ByValArray, SizeConst = 10)]
     public byte[] fp_bytes;
     private byte[] fp_pad; // Padding
 }
@@ -171,46 +171,46 @@ public struct acc {
 /// <summary>
 /// Structure representing the XMM floating-point accumulator
 /// </summary>
-[StructLayout(LayoutKindSequential)]
+[StructLayout(LayoutKind.Sequential)]
 public struct xmmacc {
     /// <summary>
     /// XMM bytes
     /// </summary>
-    [MarshalAs(UnmanagedTypeByValArray, SizeConst = 16)]
+    [MarshalAs(UnmanagedType.ByValArray, SizeConst = 16)]
     public byte[] xmm_bytes;
 }
 
 /// <summary>
 /// Structure representing the YMM floating-point accumulator
 /// </summary>
-[StructLayout(LayoutKindSequential)]
+[StructLayout(LayoutKind.Sequential)]
 public struct ymmacc {
     /// <summary>
     /// YMM bytes
     /// </summary>
-    [MarshalAs(UnmanagedTypeByValArray, SizeConst = 16)]
+    [MarshalAs(UnmanagedType.ByValArray, SizeConst = 16)]
     public byte[] ymm_bytes;
 }
 
 /// <summary>
 /// Structure representing the header of extended CPU state
 /// </summary>
-[StructLayout(LayoutKindSequential)]
+[StructLayout(LayoutKind.Sequential)]
 public struct xstate_hdr {
     /// <summary>
     /// Extended state bitvector
     /// </summary>
     public ulong xstate_bv;
-    [MarshalAs(UnmanagedTypeByValArray, SizeConst = 16)]
+    [MarshalAs(UnmanagedType.ByValArray, SizeConst = 16)]
     private byte[] xstate_rsrv0; // Reserved
-    [MarshalAs(UnmanagedTypeByValArray, SizeConst = 40)]
+    [MarshalAs(UnmanagedType.ByValArray, SizeConst = 40)]
     private byte[] xstate_rsrv; // Reserved
 }
 
 /// <summary>
 /// Structure representing the saved FPU extended state
 /// </summary>
-[StructLayout(LayoutKindSequential)]
+[StructLayout(LayoutKind.Sequential)]
 public struct savefpu_xstate {
     /// <summary>
     /// XSTATE header
@@ -219,14 +219,14 @@ public struct savefpu_xstate {
     /// <summary>
     /// YMM floating-point accumulators
     /// </summary>
-    [MarshalAs(UnmanagedTypeByValArray, SizeConst = 16)]
+    [MarshalAs(UnmanagedType.ByValArray, SizeConst = 16)]
     public ymmacc[] sx_ymm;
 }
 
 /// <summary>
 /// Structure representing the FPU registers
 /// </summary>
-[StructLayout(LayoutKindSequential, Pack = 64)]
+[StructLayout(LayoutKind.Sequential, Pack = 64)]
 public struct fpregs {
     /// <summary>
     /// Floating-point environment
@@ -235,12 +235,12 @@ public struct fpregs {
     /// <summary>
     /// Floating-point accumulators
     /// </summary>
-    [MarshalAs(UnmanagedTypeByValArray, SizeConst = 8)]
+    [MarshalAs(UnmanagedType.ByValArray, SizeConst = 8)]
     public acc[] sv_fp;
     /// <summary>
     /// XMM floating-point accumulators
     /// </summary>
-    [MarshalAs(UnmanagedTypeByValArray, SizeConst = 16)]
+    [MarshalAs(UnmanagedType.ByValArray, SizeConst = 16)]
     public xmmacc[] sv_xmm;
     private byte[] sv_pad; // Padding
     /// <summary>
@@ -252,7 +252,7 @@ public struct fpregs {
 /// <summary>
 /// Structure representing the debug registers
 /// </summary>
-[StructLayout(LayoutKindSequential, Pack = 1)]
+[StructLayout(LayoutKind.Sequential, Pack = 1)]
 public struct dbregs {
     /// <summary>
     /// Debug register 0
